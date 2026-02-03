@@ -11,12 +11,15 @@ import LetterView from "./LetterView";
 import AudioControl from "./AudioControl";
 import { letters } from "../data/letters";
 import Starfield from "./Starfield";
+import GlobeGallery from "./GlobeGallery";
+import { useSound } from "../contexts/SoundContext";
 
 gsap.registerPlugin(useGSAP, TextPlugin);
 
 const SKIP_INTRO = true;
 
 export default function Experience() {
+  const { playSfx } = useSound();
   const [started, setStarted] = useState(false);
   const [introComplete, setIntroComplete] = useState(false);
   const [activeLetterId, setActiveLetterId] = useState<string | null>(null);
@@ -31,16 +34,18 @@ export default function Experience() {
   const titleScreenWrapperRef = useRef<HTMLDivElement>(null);
 
   const [showTitleScreen, setShowTitleScreen] = useState(false);
+  const [hasSeenTitleIntro, setHasSeenTitleIntro] = useState(false); // New State
   // const titleScreenRef = useRef<HTMLDivElement>(null);
   const [menuMounted, setMenuMounted] = useState(false); // New State to control mounting
   const [menuInteractive, setMenuInteractive] = useState(false); // Controls if Menu can influence stars
+  const [showGallery, setShowGallery] = useState(false);
   const starfieldSpeedRef = useRef(0); // Shared Starfield Ref
 
   const handleTitleScreenStart = () => {
     // 1. Mount the Menu
     setMenuMounted(true);
-    // Reset starfield speed to ensure no jumps
-    starfieldSpeedRef.current = 0;
+    setHasSeenTitleIntro(true); // Mark intro as seen when leaving
+    // Don't reset speed here, let the animation interpolate from current speed
   };
 
   // Watch for menu mount to start transition
@@ -207,111 +212,189 @@ export default function Experience() {
     { scope: containerRef, dependencies: [started] },
   );
 
-  // New Effect: Handle Transition Sequence when Menu Mounts
+  // New Effect: Handle Transition Sequence when Menu Mounts OR Unmounts
   useGSAP(
     () => {
-      if (!menuMounted || !menuRef.current || !titleScreenWrapperRef.current)
-        return;
+      if (!menuRef.current || !titleScreenWrapperRef.current) return;
 
-      // Create a specific transition timeline
       const tl = gsap.timeline();
 
-      // 1. Prepare Main Menu
-      gsap.set(menuRef.current, { autoAlpha: 1 });
-      gsap.set(introRef.current, { autoAlpha: 0, display: "none" });
+      if (menuMounted) {
+        // --- FORWARD: Title -> Menu ---
+        // 1. Prepare Main Menu
+        gsap.set(menuRef.current, { autoAlpha: 1 });
+        gsap.set(introRef.current, { autoAlpha: 0, display: "none" });
 
-      // 2. Animate Title Screen UP and OUT
-      // tl.to(titleScreenWrapperRef.current, {
-      //     y: "-100%",
-      //     duration: 1.5,
-      //     ease: "power3.inOut",
-      // });
+        // 2. Fade Out Title Screen (Foreground)
+        tl.to(titleScreenWrapperRef.current, {
+          opacity: 0,
+          duration: 0.8,
+          ease: "power2.inOut",
+        });
 
-      // NEW SIMPLIFIED TRANSITION
+        // 3. Starfield Acceleration (Travel Phase)
+        const speedProxy = { val: starfieldSpeedRef.current || 0 };
+        tl.call(() => playSfx("warp"));
 
-      // 1. Fade Out Title Screen (Foreground)
-      tl.to(titleScreenWrapperRef.current, {
-        opacity: 0,
-        duration: 0.8,
-        ease: "power2.inOut",
-      });
+        tl.to(
+          speedProxy,
+          {
+            val: 180, // Much faster (from 120 -> 180)
+            duration: 1.0, // Shorter buildup (from 1.8 -> 1.0)
+            ease: "power3.in", // Sharp acceleration
+            onUpdate: () => {
+              starfieldSpeedRef.current = speedProxy.val;
+            },
+          },
+          "<", // Overlap completely with fade out (was <0.1)
+        );
 
-      // 2. Starfield Acceleration (Travel Phase)
-      const speedProxy = { val: 0 };
-      tl.to(
-        speedProxy,
-        {
-          val: 180, // Much faster (from 120 -> 180)
-          duration: 1.0, // Shorter buildup (from 1.8 -> 1.0)
-          ease: "expo.in", // Sharp acceleration
+        // 4. Starfield Deceleration (Arrival Phase)
+        tl.to(speedProxy, {
+          val: 0,
+          duration: 1.8, // Faster braking
+          ease: "power3.out",
           onUpdate: () => {
             starfieldSpeedRef.current = speedProxy.val;
           },
-        },
-        "<", // Overlap completely with fade out (was <0.1)
-      );
+        });
 
-      // 3. Starfield Deceleration (Arrival Phase)
-      tl.to(speedProxy, {
-        val: 0,
-        duration: 1.8, // Faster braking
-        ease: "power3.out",
-        onUpdate: () => {
-          starfieldSpeedRef.current = speedProxy.val;
-        },
-      });
+        // 5. Main Menu Entry (Synchronized with Braking)
+        const menuItemWrappers =
+          menuRef.current.querySelectorAll(".menu-item-wrapper");
+        const headerContent = menuRef.current.querySelectorAll("header > *");
+        // const instructionText =
+        //   menuRef.current.querySelector(".instruction-text");
 
-      // 4. Main Menu Entry (Synchronized with Braking)
-      const menuItemWrappers =
-        menuRef.current.querySelectorAll(".menu-item-wrapper");
-      const headerContent = menuRef.current.querySelectorAll("header > *");
-      const instructionText = menuRef.current.querySelector(".instruction-text");
+        const allMenuContent = [
+          ...Array.from(headerContent),
+          // instructionText,
+          ...Array.from(menuItemWrappers),
+        ];
 
-      const allMenuContent = [
-        ...Array.from(headerContent),
-        instructionText,
-        ...Array.from(menuItemWrappers),
-      ];
+        // FIX: Reset properties to resting state so .from() works correctly on re-entry
+        gsap.set(allMenuContent, { y: 0, opacity: 1 });
 
-      tl.from(
-        allMenuContent,
-        {
+        tl.from(
+          allMenuContent,
+          {
+            y: "20vh",
+            opacity: 0,
+            duration: 1.8, // Matches deceleration
+            ease: "power3.out",
+            stagger: 0.1,
+          },
+          "<", // Starts exactly when deceleration starts
+        );
+
+        // 6. Cleanup
+        tl.call(() => setShowTitleScreen(false));
+        tl.set(titleScreenWrapperRef.current, { display: "none" });
+        tl.call(() => setMenuInteractive(true)); // Allow menu to control stars now
+
+        // Fade In Back Button (after menu entry is largely done)
+        const backButton = menuRef.current.querySelector(".back-button");
+        if (backButton) {
+          tl.to(backButton, { opacity: 1, duration: 1, ease: "power2.out" });
+        }
+
+        // 7. Music
+        tl.call(
+          () => {
+            setBgMusicSrc("/audio/background_loop.mp3");
+            setAudioVolume(0.5);
+          },
+          undefined,
+          "<",
+        );
+      } else {
+        // --- BACKWARD: Menu -> Title ---
+        // Check if Menu is visible to avoid initial run
+        if (gsap.getProperty(menuRef.current, "opacity") === 0) return;
+
+        tl.call(() => setMenuInteractive(false));
+
+        // Hide Back Button immediately
+        const backButton = menuRef.current.querySelector(".back-button");
+        if (backButton) {
+          tl.to(backButton, { opacity: 0, duration: 0.3, ease: "power2.out" });
+        }
+
+        // Prepare Title Screen
+        tl.call(() => setShowTitleScreen(true));
+        tl.set(titleScreenWrapperRef.current, { display: "block", opacity: 0 });
+
+        // Fade Out Menu
+        const menuItemWrappers =
+          menuRef.current.querySelectorAll(".menu-item-wrapper");
+        const headerContent = menuRef.current.querySelectorAll("header > *");
+        const allMenuContent = [
+          ...Array.from(headerContent),
+          ...Array.from(menuItemWrappers),
+        ];
+
+        tl.to(allMenuContent, {
           y: "20vh",
           opacity: 0,
-          duration: 1.8, // Matches deceleration
-          ease: "power3.out",
-          stagger: 0.1,
-        },
-        "<", // Starts exactly when deceleration starts
-      );
+          duration: 0.8,
+          ease: "power2.in",
+          stagger: { amount: 0.2, from: "end" },
+        });
 
-      // 5. Cleanup
-      tl.call(() => setShowTitleScreen(false));
-      tl.set(titleScreenWrapperRef.current, { display: "none" });
-      tl.call(() => setMenuInteractive(true)); // Allow menu to control stars now
+        // Reverse Warp
+        const speedProxy = { val: starfieldSpeedRef.current || 0 };
+        tl.call(() => playSfx("warp"));
 
-      // 4. Cleanup
-      tl.call(() => setShowTitleScreen(false));
-      tl.set(titleScreenWrapperRef.current, { display: "none" });
-      tl.call(
-        () => {
-          setBgMusicSrc("/audio/background_loop.mp3");
-          setAudioVolume(0.5);
-        },
-        undefined,
-        "<",
-      );
+        tl.to(
+          speedProxy,
+          {
+            val: -150, // Reverse speed
+            duration: 0.8,
+            ease: "expo.in",
+            onUpdate: () => {
+              starfieldSpeedRef.current = speedProxy.val;
+            },
+          },
+          "<",
+        );
+
+        // Fade In Title Screen
+        tl.to(titleScreenWrapperRef.current, {
+          opacity: 1,
+          duration: 1.0,
+          ease: "power2.out",
+        });
+
+        // Brake to stop
+        tl.to(
+          speedProxy,
+          {
+            val: 0,
+            duration: 1.5,
+            ease: "power3.out",
+            onUpdate: () => {
+              starfieldSpeedRef.current = speedProxy.val;
+            },
+          },
+          "<",
+        );
+
+        // Cleanup Menu
+        tl.set(menuRef.current, { autoAlpha: 0 });
+      }
     },
     { scope: containerRef, dependencies: [menuMounted] },
-  ); // Run when menuMounted becomes true
+  );
 
   // Handlers to manage audio ducking
   const handleLetterSelect = (id: string) => {
+    playSfx("open");
     setActiveLetterId(id);
     setAudioVolume(0.2); // Duck volume
   };
 
   const handleLetterDismiss = () => {
+    playSfx("close");
     setActiveLetterId(null);
     setAudioVolume(0.5); // Restore volume
   };
@@ -332,7 +415,10 @@ export default function Experience() {
         </div>
       </div>
 
-      <Starfield speedRef={starfieldSpeedRef} />
+      <Starfield
+        speedRef={starfieldSpeedRef}
+        enableFriction={menuInteractive}
+      />
 
       <Intro ref={introRef} />
 
@@ -342,7 +428,16 @@ export default function Experience() {
         className="fixed inset-0 z-55 pointer-events-auto"
         style={{ display: "none" }} // Hidden by default, controlled by GSAP
       >
-        {showTitleScreen && <TitleScreen onStart={handleTitleScreenStart} />}
+        {showTitleScreen && (
+          <TitleScreen
+            onStart={handleTitleScreenStart}
+            onGalleryOpen={() => {
+              setShowGallery(true);
+              setHasSeenTitleIntro(true); // Also set if they go to gallery first
+            }}
+            skipIntro={hasSeenTitleIntro}
+          />
+        )}
       </div>
 
       <MainMenu
@@ -350,6 +445,11 @@ export default function Experience() {
         letters={letters}
         visible={introComplete}
         onLetterSelect={handleLetterSelect}
+        onGalleryOpen={() => setShowGallery(true)}
+        onBack={() => {
+          setMenuMounted(false);
+          setShowTitleScreen(true);
+        }}
         starfieldSpeedRef={starfieldSpeedRef}
         controlsStarfield={menuInteractive}
       />
@@ -362,12 +462,10 @@ export default function Experience() {
         }}
       />
 
+      {showGallery && <GlobeGallery onClose={() => setShowGallery(false)} />}
+
       <AudioControl
-        src={
-          activeLetter
-            ? `/audio/${activeLetter.nickname.toLowerCase()}.mp3`
-            : bgMusicSrc
-        }
+        src={activeLetter ? `/audio/${activeLetter.id}.mp3` : bgMusicSrc}
         targetVolume={audioVolume}
       />
     </main>

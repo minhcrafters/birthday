@@ -2,8 +2,20 @@
 
 import React, { useEffect, useRef } from "react";
 
-const Starfield = ({ speedRef }: { speedRef?: React.RefObject<number> }) => {
+const Starfield = ({
+  speedRef,
+  enableFriction = true,
+}: {
+  speedRef?: React.MutableRefObject<number>;
+  enableFriction?: boolean;
+}) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const frictionEnabledRef = useRef(enableFriction);
+
+  // Keep ref in sync with prop without triggering re-initialization of canvas
+  useEffect(() => {
+    frictionEnabledRef.current = enableFriction;
+  }, [enableFriction]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -67,10 +79,12 @@ const Starfield = ({ speedRef }: { speedRef?: React.RefObject<number> }) => {
       });
 
       // Decay external speed (friction)
-      if (speedRef && Math.abs(speedRef.current) > 0.01) {
-        speedRef.current *= 0.9;
-      } else if (speedRef) {
-        speedRef.current = 0;
+      if (frictionEnabledRef.current && speedRef) {
+        if (Math.abs(speedRef.current) > 0.01) {
+          speedRef.current *= 0.9;
+        } else {
+          speedRef.current = 0;
+        }
       }
 
       animationFrameId = requestAnimationFrame(draw);
@@ -84,7 +98,7 @@ const Starfield = ({ speedRef }: { speedRef?: React.RefObject<number> }) => {
       window.removeEventListener("resize", resizeCanvas);
       cancelAnimationFrame(animationFrameId);
     };
-  }, [speedRef]);
+  }, [speedRef]); // Removed enableFriction from deps
 
   return (
     <canvas

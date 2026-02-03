@@ -159,7 +159,7 @@ const LetterView = ({
           <div className="flex-1 min-h-0 relative z-10 overflow-y-auto no-scrollbar pr-2">
             <div
               ref={textRef}
-              className="block font-serif text-xl md:text-3xl leading-relaxed text-gray-200"
+              className="block font-serif text-xl md:text-3xl leading-relaxed text-gray-200 select-text cursor-text"
             >
               {displayLetter?.content.map((paragraph, index, arr) => {
                 const isLast = index === arr.length - 1;

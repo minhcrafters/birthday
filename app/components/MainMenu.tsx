@@ -1,10 +1,11 @@
 import React, { forwardRef, useLayoutEffect, useRef, useEffect } from "react";
 import { LetterData } from "../data/letters";
-import Starfield from "./Starfield";
 
 interface MainMenuProps {
   letters: LetterData[];
   onLetterSelect: (id: string) => void;
+  onGalleryOpen: () => void;
+  onBack: () => void;
   visible: boolean;
   starfieldSpeedRef: React.MutableRefObject<number>;
   controlsStarfield?: boolean;
@@ -15,6 +16,8 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
     {
       letters,
       onLetterSelect,
+      onGalleryOpen,
+      onBack,
       visible,
       starfieldSpeedRef,
       controlsStarfield = false,
@@ -27,57 +30,72 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
 
     const rAFRef = useRef<number | null>(null);
 
-    const updateItems = () => {
-      if (!scrollContainerRef.current) return;
-
-      const container = scrollContainerRef.current;
-      const currentScrollTop = container.scrollTop;
-
-      // Calculate velocity
-      const velocity = currentScrollTop - lastScrollTopRef.current;
-      lastScrollTopRef.current = currentScrollTop;
-
-      // Update starfield speed (Global ref) - ONLY if allowed
-      if (starfieldSpeedRef && controlsStarfield) {
-        starfieldSpeedRef.current = velocity;
-      }
-
-      const containerRect = container.getBoundingClientRect();
-      const containerCenter = containerRect.top + containerRect.height / 2;
-      const maxDist = containerRect.height / 2;
-
-      itemsRef.current.forEach((item) => {
-        if (!item) return;
-
-        // Optimization: Use offsetTop relative to container if possible,
-        // but getBoundingClientRect is more reliable for fixed/absolute contexts.
-        // given the list is short, getBoundingClientRect is acceptable per-frame if batched.
-        // However, we are in a rAF loop now, so it's better.
-
-        const itemRect = item.getBoundingClientRect();
-        const itemCenter = itemRect.top + itemRect.height / 2;
-
-        const distance = Math.abs(containerCenter - itemCenter);
-        const normalizedDist = Math.min(distance / maxDist, 1);
-
-        // Calculate styles
-        const scale = 1.5 - normalizedDist * 0.7;
-        const opacity = 1 - normalizedDist * 0.7;
-        const blur = normalizedDist * 3;
-
-        // Use transform3d for hardware acceleration
-        item.style.transform = `scale(${scale}) translateZ(0)`;
-        item.style.opacity = `${opacity}`;
-        item.style.filter = `blur(${blur}px)`;
-        item.style.zIndex = `${Math.round((1 - normalizedDist) * 100)}`;
-      });
-
-      rAFRef.current = null;
-    };
-
     // Use useLayoutEffect to ensure styles are applied before browser paint
     // and before parent animations might read them (if delayed correctly).
     useLayoutEffect(() => {
+      const updateItems = () => {
+        if (!scrollContainerRef.current) return;
+
+        const container = scrollContainerRef.current;
+        const currentScrollTop = container.scrollTop;
+
+        // Calculate velocity
+        const velocity = currentScrollTop - lastScrollTopRef.current;
+        lastScrollTopRef.current = currentScrollTop;
+
+        // Update starfield speed (Global ref) - ONLY if allowed
+        if (starfieldSpeedRef && controlsStarfield) {
+          starfieldSpeedRef.current = velocity;
+        }
+
+        const containerHeight = container.clientHeight;
+        const containerCenter = container.scrollTop + containerHeight / 2;
+        const maxDist = containerHeight / 2;
+
+        itemsRef.current.forEach((item) => {
+          if (!item) return;
+
+          // Use offsetTop for layout-based position (ignoring GSAP transforms)
+          // Since nav is relative, offsetTop is relative to the scroll container (mostly)
+          // We need to handle potential nesting if wrappers interfere, but usually fine.
+
+          // Note: item.offsetTop includes the container's padding-top if the item is a direct child
+          // or if standard flow.
+
+          // We need to account for the wrapper 'div' if 'item' is the button inside.
+          // button.offsetTop is relative to its offsetParent.
+          // If wrapper isn't positioned, offsetParent is nav.
+
+          let itemTop = item.offsetTop;
+          let parent = item.offsetParent as HTMLElement;
+
+          // Ensure we calculate relative to the container
+          while (parent && parent !== container) {
+            itemTop += parent.offsetTop;
+            parent = parent.offsetParent as HTMLElement;
+          }
+
+          const itemCenter = itemTop + item.offsetHeight / 2;
+
+          const distance = Math.abs(containerCenter - itemCenter);
+          const normalizedDist = Math.min(distance / maxDist, 1);
+
+          // Calculate styles - SCALING DOWN from natural size (1.0)
+          // Center = 1.0, Edges = 0.5
+          const scale = 1.0 - normalizedDist * 0.5;
+          const opacity = 1 - normalizedDist * 0.7;
+          const blur = normalizedDist * 3;
+
+          // Use transform3d for hardware acceleration
+          item.style.transform = `scale(${scale}) translateZ(0)`;
+          item.style.opacity = `${opacity}`;
+          item.style.filter = `blur(${blur}px)`;
+          item.style.zIndex = `${Math.round((1 - normalizedDist) * 100)}`;
+        });
+
+        rAFRef.current = null;
+      };
+
       const handleScroll = () => {
         if (!rAFRef.current) {
           rAFRef.current = requestAnimationFrame(updateItems);
@@ -97,7 +115,7 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
         window.removeEventListener("resize", handleScroll);
         if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
       };
-    }, [visible]); // Recalculate when visibility changes
+    }, [visible, controlsStarfield, starfieldSpeedRef]); // Recalculate when visibility changes
 
     // Keyboard Navigation for Menu
     useEffect(() => {
@@ -115,7 +133,15 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
 
         itemsRef.current.forEach((item, index) => {
           if (!item) return;
-          const itemCenter = item.offsetTop + item.offsetHeight / 2;
+
+          let itemTop = item.offsetTop;
+          let parent = item.offsetParent as HTMLElement;
+          while (parent && parent !== container) {
+            itemTop += parent.offsetTop;
+            parent = parent.offsetParent as HTMLElement;
+          }
+
+          const itemCenter = itemTop + item.offsetHeight / 2;
           const dist = Math.abs(containerCenter - itemCenter);
           if (dist < minDistance) {
             minDistance = dist;
@@ -188,12 +214,38 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
                 </svg>
               </div>
             </div>
+
+            {/* Instruction Text */}
+            {/*<div className="instruction-text text-gray-500 text-xs tracking-[0.2em] font-light uppercase animate-pulse mb-2">
+              Choose a letter to read
+            </div>*/}
           </header>
 
-          {/* Instruction Text */}
-          <div className="instruction-text text-gray-500 text-xs tracking-[0.2em] font-light uppercase animate-pulse mb-2">
-            Choose a letter to read
-          </div>
+          {/* Back Button - Fixed Top Left */}
+          <button
+            onClick={onBack}
+            className="back-button opacity-0 absolute top-8 left-8 z-50 text-gray-400 hover:text-white transition-colors pointer-events-auto flex items-center gap-2 group"
+          >
+            <div className="p-1 border border-gray-600 rounded-full group-hover:border-white transition-all">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M15 19l-7-7 7-7"
+                />
+              </svg>
+            </div>
+            <span className="text-[10px] uppercase tracking-[0.2em] hidden md:block">
+              Back
+            </span>
+          </button>
         </div>
 
         {/* Scrollable List Container (Full Screen Centered) */}
@@ -205,7 +257,7 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
             {/* Scrollable Area */}
             <nav
               ref={scrollContainerRef}
-              className="h-full overflow-y-auto no-scrollbar py-[45vh] px-4 flex flex-col items-center gap-8 snap-y snap-mandatory touch-pan-y"
+              className="relative h-full overflow-y-auto no-scrollbar py-[45vh] px-4 flex flex-col items-center gap-8 snap-y snap-mandatory touch-pan-y"
             >
               {letters.map((letter, index) => (
                 <div
@@ -217,7 +269,7 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
                       itemsRef.current[index] = el;
                     }}
                     onClick={() => onLetterSelect(letter.id)}
-                    className="menu-item group relative text-2xl md:text-3xl font-serif font-semibold tracking-wide cursor-pointer focus:outline-none py-2 will-change-transform"
+                    className="menu-item group relative text-4xl md:text-5xl font-serif font-semibold tracking-wide cursor-pointer focus:outline-none py-2 will-change-transform"
                     aria-label={`Read letter from ${letter.nickname}`}
                   >
                     <span className="relative z-10 text-white">
@@ -235,6 +287,34 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
             <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-black via-black/80 to-transparent z-20 pointer-events-none" />
           </div>
         </div>
+
+        {/* Gallery Button - Fixed Bottom */}
+        {/*<div className="absolute bottom-12 left-0 right-0 z-50 flex justify-center pointer-events-auto">
+          <button
+            onClick={onGalleryOpen}
+            className="group flex flex-col items-center gap-2 text-gray-400 hover:text-white transition-colors duration-300"
+          >
+            <div className="p-2 border border-gray-600 rounded-full group-hover:border-white group-hover:bg-white/10 transition-all duration-300">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <span className="text-[10px] uppercase tracking-[0.2em]">
+              View World Gallery
+            </span>
+          </button>
+        </div>*/}
       </div>
     );
   },

@@ -4,9 +4,15 @@ import { useGSAP } from "@gsap/react";
 
 interface TitleScreenProps {
   onStart: () => void;
+  onGalleryOpen: () => void;
+  skipIntro?: boolean;
 }
 
-const TitleScreen = ({ onStart }: TitleScreenProps) => {
+const TitleScreen = ({
+  onStart,
+  onGalleryOpen,
+  skipIntro = false,
+}: TitleScreenProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
   const btnGroupRef = useRef<HTMLDivElement>(null);
@@ -16,6 +22,14 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
       // Main Cinematic Sequence
       const tl = gsap.timeline();
 
+      if (skipIntro) {
+        // Skip animation: Set to final state immediately
+        gsap.set(containerRef.current, { opacity: 1 });
+        gsap.set(titleRef.current, { scale: 1, y: 0, opacity: 1 });
+        gsap.set(btnGroupRef.current, { opacity: 1, y: 0 });
+        return;
+      }
+
       // 0. Initial Setup
       // Fade in container first
       tl.to(containerRef.current, {
@@ -24,17 +38,26 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
         ease: "power2.inOut",
       });
 
+      // Calculate distance to center the title
+      let centerOffset = 0;
+      if (titleRef.current) {
+        const titleRect = titleRef.current.getBoundingClientRect();
+        const viewportCenter = window.innerHeight / 2;
+        const titleCenter = titleRect.top + titleRect.height / 2;
+        centerOffset = viewportCenter - titleCenter;
+      }
+
       // 1. "Happy Birthday!" appears BIG at center
       tl.fromTo(
         titleRef.current,
         {
           scale: 1.5, // Big
-          y: "20vh", // Centered roughly (offset by layout)
+          y: centerOffset, // Dynamically centered
           opacity: 0,
         },
         {
           scale: 1.5,
-          y: "20vh",
+          y: centerOffset,
           opacity: 1,
           duration: 1.5, // Shorter duration
           ease: "power2.out",
@@ -48,7 +71,7 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
       // 2. Scale down and move up to title position
       tl.to(titleRef.current, {
         scale: 1,
-        y: 0,
+        y: 0, // Back to layout position
         duration: 2,
         ease: "power3.inOut", // Cinematic slow move
       });
@@ -99,12 +122,12 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
           </button>
 
           <button
+            onClick={onGalleryOpen}
             disabled
-            className="group relative px-10 py-4 border border-white/30 bg-black cursor-not-allowed"
+            className="group relative px-10 py-4 overflow-hidden border border-gray-800 bg-black cursor-not-allowed opacity-50"
           >
-            <span className="flex items-center justify-between text-xs tracking-[0.3em] font-medium text-gray-500">
-              <span>GALLERY</span>
-              <span className="text-[9px]">LOCKED</span>
+            <span className="relative flex items-center justify-between text-xs tracking-[0.3em] font-medium text-gray-600">
+              <span>VIEW GALLERY (WIP)</span>
             </span>
           </button>
         </div>
