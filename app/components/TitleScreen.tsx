@@ -20,7 +20,7 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
       // Fade in container first
       tl.to(containerRef.current, {
         opacity: 1,
-        duration: 2,
+        duration: 0.5,
         ease: "power2.inOut",
       });
 
@@ -36,13 +36,14 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
           scale: 1.5,
           y: "20vh",
           opacity: 1,
-          duration: 2.5,
+          duration: 1.5, // Shorter duration
           ease: "power2.out",
         },
+        "<", // Start immediately with container fade
       );
 
       // Hold for a moment to let the user read it
-      tl.to({}, { duration: 1.5 });
+      tl.to({}, { duration: 1.0 }); // Shorter hold
 
       // 2. Scale down and move up to title position
       tl.to(titleRef.current, {
@@ -56,7 +57,7 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
       tl.fromTo(
         btnGroupRef.current,
         { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 2, ease: "power2.out" },
+        { opacity: 1, y: 0, duration: 1, ease: "power2.out" },
         "-=0.5", // Start slightly before title finishes settling
       );
     },
@@ -86,11 +87,11 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
         <div ref={btnGroupRef} className="flex flex-col gap-6 min-w-60">
           <button
             onClick={onStart}
-            className="group relative px-10 py-4 overflow-hidden border border-white/30 hover:border-white transition-colors duration-500"
+            className="group relative px-10 py-4 overflow-hidden border border-white bg-black hover:border-white transition-colors duration-500"
           >
             <div className="absolute inset-0 w-0 bg-white transition-all duration-500 ease-out group-hover:w-full" />
             <span className="relative flex items-center justify-between text-xs tracking-[0.3em] font-medium text-white group-hover:text-black transition-colors duration-300">
-              <span>START</span>
+              <span>READ THE LETTERS</span>
               <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 →
               </span>
@@ -99,20 +100,11 @@ const TitleScreen = ({ onStart }: TitleScreenProps) => {
 
           <button
             disabled
-            className="group relative px-10 py-4 border border-white/10 opacity-40 cursor-not-allowed"
+            className="group relative px-10 py-4 border border-white/30 bg-black cursor-not-allowed"
           >
             <span className="flex items-center justify-between text-xs tracking-[0.3em] font-medium text-gray-500">
-              <span>CHAPTERS</span>
+              <span>GALLERY</span>
               <span className="text-[9px]">LOCKED</span>
-            </span>
-          </button>
-
-          <button
-            disabled
-            className="group relative px-10 py-4 border border-white/10 opacity-40 cursor-not-allowed"
-          >
-            <span className="flex items-center justify-between text-xs tracking-[0.3em] font-medium text-gray-500">
-              <span>OPTIONS</span>
             </span>
           </button>
         </div>

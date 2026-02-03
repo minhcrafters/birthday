@@ -191,7 +191,7 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
           </header>
 
           {/* Instruction Text */}
-          <div className="text-gray-500 text-xs tracking-[0.2em] font-light uppercase animate-pulse mb-2">
+          <div className="instruction-text text-gray-500 text-xs tracking-[0.2em] font-light uppercase animate-pulse mb-2">
             Choose a letter to read
           </div>
         </div>

@@ -194,37 +194,15 @@ export default function Experience() {
       tl.call(() => setShowTitleScreen(true));
 
       // Fade out Intro Black BG to reveal Stars (concurrent with Title Screen entrance)
-      tl.to(introEl, { opacity: 0, duration: 2, ease: "power2.inOut" }, "<");
+      // Delayed by 2.5s to let "Happy Birthday" text appear on black first
+      tl.to(
+        introEl,
+        { opacity: 0, duration: 2, ease: "power2.inOut" },
+        "+=0.5",
+      );
 
       // Pause Timeline and wait for User Interaction (Start Button)
       tl.addPause();
-
-      // --- RESUME HERE AFTER CLICKING START ---
-
-      // Phase 3: "Camera Move Down" Transition
-      // We simulate the camera moving down rapidly by moving the current view (Title Screen) UP
-      // and bringing the new view (Menu) in from the BOTTOM.
-
-      // We use a call() to check for refs because menuRef.current might be null at build time
-      // if it wasn't mounted yet. However, since we build the timeline once,
-      // we need to dynamically add these tweens OR ensure menuRef is stable.
-
-      // Since we changed MainMenu to be conditionally mounted, menuRef.current is initially null.
-      // We cannot pre-build the timeline for menu animations.
-
-      // SOLUTION: We add the transition logic dynamically to the master timeline
-      // OR we just use a separate tween sequence here triggered by the play().
-      // But we are inside the initial build.
-
-      // Better approach for conditional mount:
-      // The timeline PAUSES at line 178.
-      // When we resume, we are strictly relying on what was built.
-      // BUT if menuRef.current was null during build, those tweens are invalid.
-
-      // So we must NOT put the Menu tweens in the initial timeline build if the menu isn't mounted.
-      // We should append them or run them separately.
-
-      // Let's truncate the master timeline here.
     },
     { scope: containerRef, dependencies: [started] },
   );
@@ -260,14 +238,18 @@ export default function Experience() {
 
       // 2. Starfield Acceleration (Travel Phase)
       const speedProxy = { val: 0 };
-      tl.to(speedProxy, {
-        val: 80, // Much faster
-        duration: 1.5, // Faster buildup
-        ease: "power2.in", // Smooth buildup
-        onUpdate: () => {
-          starfieldSpeedRef.current = speedProxy.val;
+      tl.to(
+        speedProxy,
+        {
+          val: 180, // Much faster (from 120 -> 180)
+          duration: 1.0, // Shorter buildup (from 1.8 -> 1.0)
+          ease: "expo.in", // Sharp acceleration
+          onUpdate: () => {
+            starfieldSpeedRef.current = speedProxy.val;
+          },
         },
-      });
+        "<", // Overlap completely with fade out (was <0.1)
+      );
 
       // 3. Starfield Deceleration (Arrival Phase)
       tl.to(speedProxy, {
@@ -283,8 +265,11 @@ export default function Experience() {
       const menuItemWrappers =
         menuRef.current.querySelectorAll(".menu-item-wrapper");
       const headerContent = menuRef.current.querySelectorAll("header > *");
+      const instructionText = menuRef.current.querySelector(".instruction-text");
+
       const allMenuContent = [
         ...Array.from(headerContent),
+        instructionText,
         ...Array.from(menuItemWrappers),
       ];
 
