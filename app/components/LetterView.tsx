@@ -2,7 +2,6 @@ import React, { useRef, useEffect, useState } from "react";
 import { LetterData } from "../data/letters";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import Image from "next/image";
 
 interface LetterViewProps {
   letter: LetterData | null;

@@ -1,4 +1,4 @@
-import React, { forwardRef, useEffect, useRef } from "react";
+import React, { forwardRef, useLayoutEffect, useRef, useEffect } from "react";
 import { LetterData } from "../data/letters";
 import Starfield from "./Starfield";
 
@@ -15,7 +15,9 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
     const starfieldSpeedRef = useRef(0);
     const lastScrollTopRef = useRef(0);
 
-    const handleScroll = () => {
+    const rAFRef = useRef<number | null>(null);
+
+    const updateItems = () => {
       if (!scrollContainerRef.current) return;
 
       const container = scrollContainerRef.current;
@@ -25,54 +27,63 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
       const velocity = currentScrollTop - lastScrollTopRef.current;
       lastScrollTopRef.current = currentScrollTop;
 
-      // Update starfield speed (scrolling down = stars move up faster)
-      // We set it directly, letting the Starfield loop decay it when scrolling stops
+      // Update starfield speed
       starfieldSpeedRef.current = velocity;
 
       const containerRect = container.getBoundingClientRect();
       const containerCenter = containerRect.top + containerRect.height / 2;
+      const maxDist = containerRect.height / 2;
 
       itemsRef.current.forEach((item) => {
         if (!item) return;
 
+        // Optimization: Use offsetTop relative to container if possible, 
+        // but getBoundingClientRect is more reliable for fixed/absolute contexts.
+        // given the list is short, getBoundingClientRect is acceptable per-frame if batched.
+        // However, we are in a rAF loop now, so it's better.
+        
         const itemRect = item.getBoundingClientRect();
         const itemCenter = itemRect.top + itemRect.height / 2;
 
-        // Calculate distance from center
         const distance = Math.abs(containerCenter - itemCenter);
-        // Normalize distance (max distance is roughly half container height)
-        const maxDist = containerRect.height / 2;
         const normalizedDist = Math.min(distance / maxDist, 1);
 
         // Calculate styles
-        // Scale: 1.5 at center, 0.8 at edges
         const scale = 1.5 - normalizedDist * 0.7;
-        // Opacity: 1 at center, 0.3 at edges
         const opacity = 1 - normalizedDist * 0.7;
-        // Blur: 0 at center, 2px at edges
         const blur = normalizedDist * 3;
 
-        item.style.transform = `scale(${scale})`;
+        // Use transform3d for hardware acceleration
+        item.style.transform = `scale(${scale}) translateZ(0)`;
         item.style.opacity = `${opacity}`;
         item.style.filter = `blur(${blur}px)`;
-
-        // Dynamic z-index so center item overlaps neighbors if needed
         item.style.zIndex = `${Math.round((1 - normalizedDist) * 100)}`;
       });
+      
+      rAFRef.current = null;
     };
 
-    useEffect(() => {
+    const handleScroll = () => {
+      if (!rAFRef.current) {
+        rAFRef.current = requestAnimationFrame(updateItems);
+      }
+    };
+
+    // Use useLayoutEffect to ensure styles are applied before browser paint
+    // and before parent animations might read them (if delayed correctly).
+    useLayoutEffect(() => {
       const container = scrollContainerRef.current;
       if (container) {
-        container.addEventListener("scroll", handleScroll);
+        container.addEventListener("scroll", handleScroll, { passive: true });
         window.addEventListener("resize", handleScroll);
         // Initial calculation
-        handleScroll();
+        updateItems(); // Call directly to force sync update on mount
       }
 
       return () => {
         if (container) container.removeEventListener("scroll", handleScroll);
         window.removeEventListener("resize", handleScroll);
+        if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
       };
     }, [visible]); // Recalculate when visibility changes
 
@@ -184,25 +195,26 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
             {/* Scrollable Area */}
             <nav
               ref={scrollContainerRef}
-              className="h-full overflow-y-auto no-scrollbar py-[45vh] px-4 flex flex-col items-center gap-8 snap-y snap-mandatory"
+              className="h-full overflow-y-auto no-scrollbar py-[45vh] px-4 flex flex-col items-center gap-8 snap-y snap-mandatory touch-pan-y"
             >
               {letters.map((letter, index) => (
-                <button
-                  key={letter.id}
-                  ref={(el) => {
-                    itemsRef.current[index] = el;
-                  }}
-                  onClick={() => onLetterSelect(letter.id)}
-                  className="menu-item group relative text-2xl md:text-3xl font-serif font-semibold tracking-wide cursor-pointer focus:outline-none py-2 will-change-transform snap-center"
-                  aria-label={`Read letter from ${letter.nickname}`}
-                >
-                  <span className="relative z-10 text-white">
-                    {letter.nickname.toLowerCase()}
-                  </span>
+                <div key={letter.id} className="menu-item-wrapper w-full flex justify-center snap-center">
+                  <button
+                    ref={(el) => {
+                      itemsRef.current[index] = el;
+                    }}
+                    onClick={() => onLetterSelect(letter.id)}
+                    className="menu-item group relative text-2xl md:text-3xl font-serif font-semibold tracking-wide cursor-pointer focus:outline-none py-2 will-change-transform"
+                    aria-label={`Read letter from ${letter.nickname}`}
+                  >
+                    <span className="relative z-10 text-white">
+                      {letter.nickname.toLowerCase()}
+                    </span>
 
-                  {/* Simplified hover effect since scale is driven by scroll */}
-                  <div className="absolute inset-x-0 bottom-0 h-px bg-white transform scale-x-0 transition-transform duration-300 group-hover:scale-x-100 opacity-50" />
-                </button>
+                    {/* Simplified hover effect since scale is driven by scroll */}
+                    <div className="absolute inset-x-0 bottom-0 h-px bg-white transform scale-x-0 transition-transform duration-300 group-hover:scale-x-100 opacity-50" />
+                  </button>
+                </div>
               ))}
             </nav>
 

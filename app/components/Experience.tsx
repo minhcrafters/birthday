@@ -169,15 +169,15 @@ export default function Experience() {
 
       // Phase 3: Transition to Menu (Black)
 
-      tl.to(
-        introEl,
-        {
-          backgroundColor: "#000000",
-          duration: 2,
-          ease: "expo.inOut",
-        },
-        ">-0.5",
-      );
+      // Ensure Text is FULLY gone before we start fading the background/intro
+      tl.to({}, { duration: 0.5 }); // Safety buffer
+
+      // Transition BG to Black
+      tl.to(introEl, {
+        backgroundColor: "#000000",
+        duration: 2,
+        ease: "expo.inOut",
+      });
 
       // Simultaneously bring in the menu elements
       if (menuRef.current) {
@@ -186,26 +186,30 @@ export default function Experience() {
         const menuItems = menuRef.current.querySelectorAll(".menu-item");
         const headerContent = menuRef.current.querySelectorAll("header > *");
 
+        // Fade out Intro Container (revealing Starfield underneath)
+        // We delay this slightly so the black BG has time to set in, creating a seamless crossfade to stars
         tl.to(
           introEl,
           {
             opacity: 0,
-            duration: 2,
+            duration: 3, // Slower fade for smoother reveal of stars
             ease: "power2.inOut",
           },
           ">-1",
         );
 
+        // Slide up Menu Elements
         tl.from(
           [...Array.from(headerContent), ...Array.from(menuItems)],
           {
-            y: 100, // Increased distance for slide up
+            y: 50, // Reduced distance for subtler slide
             opacity: 0,
             stagger: 0.05,
-            duration: 1.5,
+            duration: 2,
             ease: "power3.out",
+            immediateRender: false, // Critical: Wait for MainMenu to apply its initial scale/blur styles
           },
-          "<+=0.5",
+          "<+=0.5", // Start sliding up while intro fades out
         );
 
         tl.call(() => setAudioVolume(0.5), undefined, "<");
