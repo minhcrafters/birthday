@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { LetterData } from "../data/letters";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import Image from "next/image";
 
 interface LetterViewProps {
   letter: LetterData | null;
@@ -163,22 +164,24 @@ const LetterView = ({
               {displayLetter?.content.map((paragraph, index, arr) => {
                 const isLast = index === arr.length - 1;
                 return (
-                    <React.Fragment key={index}>
-                        {isLast && displayLetter.imageSrc && (
-                            <div className="float-right ml-6 mb-1 relative z-0">
-                            <img
-                                ref={imageRef}
-                                src={displayLetter.imageSrc}
-                                alt={displayLetter.nickname}
-                                className="w-32 h-32 md:w-64 md:h-64 object-cover rounded-lg shadow-2xl opacity-0 transform rotate-3 grayscale contrast-125 border border-white/20"
-                            />
-                            </div>
-                        )}
-                        <p className="opacity-0 mb-6">{paragraph}</p>
-                    </React.Fragment>
+                  <React.Fragment key={index}>
+                    {isLast && displayLetter.imageSrc && (
+                      <div className="float-right ml-6 mb-1 relative z-0">
+                        <Image
+                          ref={imageRef}
+                          src={displayLetter.imageSrc}
+                          width={256}
+                          height={256}
+                          alt={displayLetter.nickname}
+                          className="w-32 h-32 md:w-64 md:h-64 object-cover rounded-lg shadow-2xl opacity-0 transform rotate-3 grayscale contrast-125 border border-white/20"
+                        />
+                      </div>
+                    )}
+                    <p className="opacity-0 mb-6">{paragraph}</p>
+                  </React.Fragment>
                 );
               })}
-              
+
               <div className="clear-both" />
             </div>
           </div>

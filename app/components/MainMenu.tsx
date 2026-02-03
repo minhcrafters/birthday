@@ -6,13 +6,23 @@ interface MainMenuProps {
   letters: LetterData[];
   onLetterSelect: (id: string) => void;
   visible: boolean;
+  starfieldSpeedRef: React.MutableRefObject<number>;
+  controlsStarfield?: boolean;
 }
 
 const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
-  ({ letters, onLetterSelect, visible }, ref) => {
+  (
+    {
+      letters,
+      onLetterSelect,
+      visible,
+      starfieldSpeedRef,
+      controlsStarfield = false,
+    },
+    ref,
+  ) => {
     const scrollContainerRef = useRef<HTMLElement>(null);
     const itemsRef = useRef<(HTMLButtonElement | null)[]>([]);
-    const starfieldSpeedRef = useRef(0);
     const lastScrollTopRef = useRef(0);
 
     const rAFRef = useRef<number | null>(null);
@@ -27,8 +37,10 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
       const velocity = currentScrollTop - lastScrollTopRef.current;
       lastScrollTopRef.current = currentScrollTop;
 
-      // Update starfield speed
-      starfieldSpeedRef.current = velocity;
+      // Update starfield speed (Global ref) - ONLY if allowed
+      if (starfieldSpeedRef && controlsStarfield) {
+        starfieldSpeedRef.current = velocity;
+      }
 
       const containerRect = container.getBoundingClientRect();
       const containerCenter = containerRect.top + containerRect.height / 2;
@@ -37,11 +49,11 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
       itemsRef.current.forEach((item) => {
         if (!item) return;
 
-        // Optimization: Use offsetTop relative to container if possible, 
+        // Optimization: Use offsetTop relative to container if possible,
         // but getBoundingClientRect is more reliable for fixed/absolute contexts.
         // given the list is short, getBoundingClientRect is acceptable per-frame if batched.
         // However, we are in a rAF loop now, so it's better.
-        
+
         const itemRect = item.getBoundingClientRect();
         const itemCenter = itemRect.top + itemRect.height / 2;
 
@@ -59,19 +71,19 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
         item.style.filter = `blur(${blur}px)`;
         item.style.zIndex = `${Math.round((1 - normalizedDist) * 100)}`;
       });
-      
-      rAFRef.current = null;
-    };
 
-    const handleScroll = () => {
-      if (!rAFRef.current) {
-        rAFRef.current = requestAnimationFrame(updateItems);
-      }
+      rAFRef.current = null;
     };
 
     // Use useLayoutEffect to ensure styles are applied before browser paint
     // and before parent animations might read them (if delayed correctly).
     useLayoutEffect(() => {
+      const handleScroll = () => {
+        if (!rAFRef.current) {
+          rAFRef.current = requestAnimationFrame(updateItems);
+        }
+      };
+
       const container = scrollContainerRef.current;
       if (container) {
         container.addEventListener("scroll", handleScroll, { passive: true });
@@ -141,10 +153,8 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
     return (
       <div
         ref={ref}
-        className="fixed inset-0 z-40 flex justify-center bg-black text-white opacity-0 pointer-events-none"
+        className="fixed inset-0 z-40 flex justify-center text-white opacity-0 invisible pointer-events-none"
       >
-        <Starfield speedRef={starfieldSpeedRef} />
-
         {/* Header & Instructions Layer (Fixed Top) */}
         <div className="absolute top-0 left-0 right-0 z-50 flex flex-col items-center pointer-events-none">
           <header className="w-full pt-12 pb-4 flex flex-col items-center gap-4 bg-linear-to-b from-black via-black/80 to-transparent">
@@ -198,7 +208,10 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
               className="h-full overflow-y-auto no-scrollbar py-[45vh] px-4 flex flex-col items-center gap-8 snap-y snap-mandatory touch-pan-y"
             >
               {letters.map((letter, index) => (
-                <div key={letter.id} className="menu-item-wrapper w-full flex justify-center snap-center">
+                <div
+                  key={letter.id}
+                  className="menu-item-wrapper w-full flex justify-center snap-center"
+                >
                   <button
                     ref={(el) => {
                       itemsRef.current[index] = el;

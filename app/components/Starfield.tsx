@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 
-const Starfield = ({ speedRef }: { speedRef?: React.MutableRefObject<number> }) => {
+const Starfield = ({ speedRef }: { speedRef?: React.RefObject<number> }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -58,7 +58,7 @@ const Starfield = ({ speedRef }: { speedRef?: React.MutableRefObject<number> }) 
         // Subtle movement (cosmic drift) + Scroll parallax
         let moveY = star.speed;
         if (speedRef) {
-             moveY += speedRef.current * star.radius * 0.1; // Parallax depth
+          moveY += speedRef.current * star.radius * 0.1; // Parallax depth
         }
 
         star.y -= moveY;
@@ -84,7 +84,7 @@ const Starfield = ({ speedRef }: { speedRef?: React.MutableRefObject<number> }) 
       window.removeEventListener("resize", resizeCanvas);
       cancelAnimationFrame(animationFrameId);
     };
-  }, []);
+  }, [speedRef]);
 
   return (
     <canvas

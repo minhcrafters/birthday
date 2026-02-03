@@ -16,7 +16,7 @@ const AudioControl = ({ src, targetVolume }: AudioControlProps) => {
 
   // Initialize first player src (fix for ref-in-render)
   useEffect(() => {
-    if (audioRef1.current) {
+    if (audioRef1.current && src) {
       audioRef1.current.src = src;
     }
   }, [src]);
@@ -30,7 +30,8 @@ const AudioControl = ({ src, targetVolume }: AudioControlProps) => {
           activePlayerRef.current === "player1"
             ? audioRef1.current
             : audioRef2.current;
-        if (player) {
+        if (player && player.src && player.src !== window.location.href) {
+          // Simple check if src is set
           player
             .play()
             .then(() => {
@@ -40,6 +41,9 @@ const AudioControl = ({ src, targetVolume }: AudioControlProps) => {
               // Auto-play might fail, that's okay, we wait for next interaction or retry
               console.log("Audio unlock attempted", err);
             });
+        } else {
+          // If no src, just mark interacted so we can play later
+          setHasInteracted(true);
         }
       }
     };
@@ -65,6 +69,7 @@ const AudioControl = ({ src, targetVolume }: AudioControlProps) => {
           : audioRef2.current;
       if (
         active &&
+        src && // Only set if src exists
         active.src !== window.location.origin + src &&
         active.src !== src
       ) {
@@ -89,26 +94,33 @@ const AudioControl = ({ src, targetVolume }: AudioControlProps) => {
 
       if (outgoing && incoming) {
         // 1. Prepare Incoming
-        incoming.src = src;
-        incoming.volume = 0; // Start silent
-        incoming.play().catch((e) => console.error("Play error", e));
+        if (src) {
+          incoming.src = src;
+          incoming.volume = 0; // Start silent
+          incoming.play().catch((e) => console.error("Play error", e));
 
-        // 2. Animate
+          // 2. Animate Incoming
+          gsap.to(incoming, {
+            volume: targetVolume,
+            duration: 2,
+            ease: "power1.in",
+          });
+        }
+
+        // 3. Fade out Outgoing (always fade out old one)
         gsap.to(outgoing, {
           volume: 0,
           duration: 2,
           ease: "power1.out",
           onComplete: () => {
             outgoing.pause();
+            if (!src) {
+              // If no new source, just pause
+            }
           },
         });
-        gsap.to(incoming, {
-          volume: targetVolume,
-          duration: 2,
-          ease: "power1.in",
-        });
 
-        // 3. Update State
+        // 4. Update State
         activePlayerRef.current = nextPlayer;
         currentSrcRef.current = src;
       }

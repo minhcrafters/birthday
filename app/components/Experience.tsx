@@ -5,10 +5,12 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { TextPlugin } from "gsap/TextPlugin";
 import Intro from "./Intro";
+import TitleScreen from "./TitleScreen";
 import MainMenu from "./MainMenu";
 import LetterView from "./LetterView";
 import AudioControl from "./AudioControl";
 import { letters } from "../data/letters";
+import Starfield from "./Starfield";
 
 gsap.registerPlugin(useGSAP, TextPlugin);
 
@@ -19,12 +21,37 @@ export default function Experience() {
   const [introComplete, setIntroComplete] = useState(false);
   const [activeLetterId, setActiveLetterId] = useState<string | null>(null);
   const [audioVolume, setAudioVolume] = useState(0);
+  const [bgMusicSrc, setBgMusicSrc] = useState(""); // Initially silent
 
   const masterTimeline = useRef<gsap.core.Timeline | null>(null);
   const containerRef = useRef<HTMLElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const startOverlayRef = useRef<HTMLDivElement>(null);
+  const titleScreenWrapperRef = useRef<HTMLDivElement>(null);
+
+  const [showTitleScreen, setShowTitleScreen] = useState(false);
+  // const titleScreenRef = useRef<HTMLDivElement>(null);
+  const [menuMounted, setMenuMounted] = useState(false); // New State to control mounting
+  const [menuInteractive, setMenuInteractive] = useState(false); // Controls if Menu can influence stars
+  const starfieldSpeedRef = useRef(0); // Shared Starfield Ref
+
+  const handleTitleScreenStart = () => {
+    // 1. Mount the Menu
+    setMenuMounted(true);
+    // Reset starfield speed to ensure no jumps
+    starfieldSpeedRef.current = 0;
+  };
+
+  // Watch for menu mount to start transition
+  useGSAP(() => {
+    if (menuMounted && masterTimeline.current) {
+      // Resume timeline from paused state once menu is presumably mounted
+      // We use a small delay or rAF to ensure DOM is ready if needed,
+      // but typically useGSAP runs after render commit.
+      masterTimeline.current.play();
+    }
+  }, [menuMounted]);
 
   // Data
   const activeLetter = letters.find((l) => l.id === activeLetterId) || null;
@@ -86,8 +113,17 @@ export default function Experience() {
       const textEl = introEl.querySelector(".intro-text");
 
       // Initial Visibility
-      gsap.set(introEl, { autoAlpha: 1, backgroundColor: "#000000" });
+      gsap.set(introEl, {
+        autoAlpha: 1,
+        backgroundColor: "#000000",
+        zIndex: 50,
+      });
       gsap.set(textEl, { opacity: 1, text: "", filter: "blur(0px)", scale: 1 });
+
+      // Ensure Menu is hidden initially (prevent flash)
+      if (menuRef.current) {
+        gsap.set(menuRef.current, { autoAlpha: 0 });
+      }
 
       // Phase 0: Fade out Start Overlay
       if (startOverlayRef.current) {
@@ -141,128 +177,148 @@ export default function Experience() {
           // Slight pause before next
           tl.to({}, { duration: 0.5 });
         });
-
-        // Phase 2: The "Happy Birthday" Sequence (Original Color Shift)
-        // Transition from Black to Blue (#8EC5FF)
-
-        // Prepare text for final reveal - MUST BE ON TIMELINE
-        tl.set(textEl, {
-          text: "Happy Birthday!",
-          opacity: 0,
-          scale: 1,
-          filter: "blur(10px)",
-        });
-
-        // 1. Animate to Blue
-        tl.to(introEl, {
-          backgroundColor: "#8EC5FF",
-          duration: 2.5,
-          ease: "power2.inOut",
-        });
-
-        // 2. Text In (Blur/Fade)
-        tl.to(
-          textEl,
-          {
-            opacity: 1,
-            filter: "blur(0px)",
-            duration: 2,
-            ease: "power2.out",
-          },
-          "<+=0.5",
-        );
-
-        // 3. Animate to Purple
-        tl.to(
-          introEl,
-          {
-            backgroundColor: "#C6B7FF",
-            duration: 2.5,
-            ease: "power2.inOut",
-          },
-          ">-0.5",
-        );
-
-        // 4. Animate to Dark Red
-        tl.to(
-          introEl,
-          {
-            backgroundColor: "#8B1E1E",
-            duration: 2.5,
-            ease: "power2.inOut",
-          },
-          ">-0.5",
-        );
-
-        // 5. Text Out (Blur/Scale)
-        tl.to(
-          textEl,
-          {
-            opacity: 0,
-            filter: "blur(10px)",
-            scale: 1.1,
-            duration: 1.5,
-            ease: "power2.in",
-          },
-          "<+=1",
-        );
-
-        // Ensure Text is FULLY gone before we start fading the background/intro
-        tl.to({}, { duration: 0.5 }); // Safety buffer
       }
 
-      // Phase 3: Transition to Menu (Black)
+      // Phase 2: Game-like Title Screen (Always Runs)
 
-      // Transition BG to Black (if not already)
-      // If SKIP_INTRO, bg is already black (initial set). If not, it's Dark Red.
-      if (!SKIP_INTRO) {
-        tl.to(introEl, {
-          backgroundColor: "#000000",
-          duration: 2,
-          ease: "expo.inOut",
-        });
+      // Ensure Text is gone (in case we skipped or just finished)
+      tl.set(textEl, { display: "none" });
+
+      // Reveal Title Screen Wrapper (it's persistent now)
+      if (titleScreenWrapperRef.current) {
+        tl.set(titleScreenWrapperRef.current, { display: "block", opacity: 1 });
       }
 
-      // Simultaneously bring in the menu elements
-      if (menuRef.current) {
-        tl.set(menuRef.current, { opacity: 1 });
+      // Show Title Screen Component (via State)
+      // This mounts the child component, triggering its internal entrance animation
+      tl.call(() => setShowTitleScreen(true));
 
-        const menuItems = menuRef.current.querySelectorAll(".menu-item");
-        const headerContent = menuRef.current.querySelectorAll("header > *");
+      // Fade out Intro Black BG to reveal Stars (concurrent with Title Screen entrance)
+      tl.to(introEl, { opacity: 0, duration: 2, ease: "power2.inOut" }, "<");
 
-        // Fade out Intro Container (revealing Starfield underneath)
-        // We delay this slightly so the black BG has time to set in, creating a seamless crossfade to stars
-        tl.to(
-          introEl,
-          {
-            opacity: 0,
-            duration: 3, // Slower fade for smoother reveal of stars
-            ease: "power2.inOut",
-          },
-          SKIP_INTRO ? ">" : ">-1", // If skipping, start immediately after overlay fade. If not, overlap with BG fade.
-        );
+      // Pause Timeline and wait for User Interaction (Start Button)
+      tl.addPause();
 
-        // Slide up Menu Elements
-        tl.from(
-          [...Array.from(headerContent), ...Array.from(menuItems)],
-          {
-            y: 50, // Reduced distance for subtler slide
-            opacity: 0,
-            stagger: 0.05,
-            duration: 2,
-            ease: "power3.out",
-            immediateRender: false, // Critical: Wait for MainMenu to apply its initial scale/blur styles
-          },
-          "<+=0.5", // Start sliding up while intro fades out
-        );
+      // --- RESUME HERE AFTER CLICKING START ---
 
-        tl.call(() => setAudioVolume(0.5), undefined, "<");
-      }
+      // Phase 3: "Camera Move Down" Transition
+      // We simulate the camera moving down rapidly by moving the current view (Title Screen) UP
+      // and bringing the new view (Menu) in from the BOTTOM.
 
-      tl.set(introEl, { display: "none" });
+      // We use a call() to check for refs because menuRef.current might be null at build time
+      // if it wasn't mounted yet. However, since we build the timeline once,
+      // we need to dynamically add these tweens OR ensure menuRef is stable.
+
+      // Since we changed MainMenu to be conditionally mounted, menuRef.current is initially null.
+      // We cannot pre-build the timeline for menu animations.
+
+      // SOLUTION: We add the transition logic dynamically to the master timeline
+      // OR we just use a separate tween sequence here triggered by the play().
+      // But we are inside the initial build.
+
+      // Better approach for conditional mount:
+      // The timeline PAUSES at line 178.
+      // When we resume, we are strictly relying on what was built.
+      // BUT if menuRef.current was null during build, those tweens are invalid.
+
+      // So we must NOT put the Menu tweens in the initial timeline build if the menu isn't mounted.
+      // We should append them or run them separately.
+
+      // Let's truncate the master timeline here.
     },
     { scope: containerRef, dependencies: [started] },
   );
+
+  // New Effect: Handle Transition Sequence when Menu Mounts
+  useGSAP(
+    () => {
+      if (!menuMounted || !menuRef.current || !titleScreenWrapperRef.current)
+        return;
+
+      // Create a specific transition timeline
+      const tl = gsap.timeline();
+
+      // 1. Prepare Main Menu
+      gsap.set(menuRef.current, { autoAlpha: 1 });
+      gsap.set(introRef.current, { autoAlpha: 0, display: "none" });
+
+      // 2. Animate Title Screen UP and OUT
+      // tl.to(titleScreenWrapperRef.current, {
+      //     y: "-100%",
+      //     duration: 1.5,
+      //     ease: "power3.inOut",
+      // });
+
+      // NEW SIMPLIFIED TRANSITION
+
+      // 1. Fade Out Title Screen (Foreground)
+      tl.to(titleScreenWrapperRef.current, {
+        opacity: 0,
+        duration: 0.8,
+        ease: "power2.inOut",
+      });
+
+      // 2. Starfield Acceleration (Travel Phase)
+      const speedProxy = { val: 0 };
+      tl.to(speedProxy, {
+        val: 80, // Much faster
+        duration: 1.5, // Faster buildup
+        ease: "power2.in", // Smooth buildup
+        onUpdate: () => {
+          starfieldSpeedRef.current = speedProxy.val;
+        },
+      });
+
+      // 3. Starfield Deceleration (Arrival Phase)
+      tl.to(speedProxy, {
+        val: 0,
+        duration: 1.8, // Faster braking
+        ease: "power3.out",
+        onUpdate: () => {
+          starfieldSpeedRef.current = speedProxy.val;
+        },
+      });
+
+      // 4. Main Menu Entry (Synchronized with Braking)
+      const menuItemWrappers =
+        menuRef.current.querySelectorAll(".menu-item-wrapper");
+      const headerContent = menuRef.current.querySelectorAll("header > *");
+      const allMenuContent = [
+        ...Array.from(headerContent),
+        ...Array.from(menuItemWrappers),
+      ];
+
+      tl.from(
+        allMenuContent,
+        {
+          y: "20vh",
+          opacity: 0,
+          duration: 1.8, // Matches deceleration
+          ease: "power3.out",
+          stagger: 0.1,
+        },
+        "<", // Starts exactly when deceleration starts
+      );
+
+      // 5. Cleanup
+      tl.call(() => setShowTitleScreen(false));
+      tl.set(titleScreenWrapperRef.current, { display: "none" });
+      tl.call(() => setMenuInteractive(true)); // Allow menu to control stars now
+
+      // 4. Cleanup
+      tl.call(() => setShowTitleScreen(false));
+      tl.set(titleScreenWrapperRef.current, { display: "none" });
+      tl.call(
+        () => {
+          setBgMusicSrc("/audio/background_loop.mp3");
+          setAudioVolume(0.5);
+        },
+        undefined,
+        "<",
+      );
+    },
+    { scope: containerRef, dependencies: [menuMounted] },
+  ); // Run when menuMounted becomes true
 
   // Handlers to manage audio ducking
   const handleLetterSelect = (id: string) => {
@@ -282,7 +338,7 @@ export default function Experience() {
     >
       <div
         ref={startOverlayRef}
-        className={`fixed inset-0 z-[100] flex items-center justify-center bg-black cursor-pointer ${
+        className={`fixed inset-0 z-100 flex items-center justify-center bg-black cursor-pointer ${
           started ? "pointer-events-none" : ""
         }`}
       >
@@ -291,13 +347,26 @@ export default function Experience() {
         </div>
       </div>
 
+      <Starfield speedRef={starfieldSpeedRef} />
+
       <Intro ref={introRef} />
+
+      {/* Title Screen Layer - Persistent Wrapper */}
+      <div
+        ref={titleScreenWrapperRef}
+        className="fixed inset-0 z-55 pointer-events-auto"
+        style={{ display: "none" }} // Hidden by default, controlled by GSAP
+      >
+        {showTitleScreen && <TitleScreen onStart={handleTitleScreenStart} />}
+      </div>
 
       <MainMenu
         ref={menuRef}
         letters={letters}
         visible={introComplete}
         onLetterSelect={handleLetterSelect}
+        starfieldSpeedRef={starfieldSpeedRef}
+        controlsStarfield={menuInteractive}
       />
 
       <LetterView
@@ -312,7 +381,7 @@ export default function Experience() {
         src={
           activeLetter
             ? `/audio/${activeLetter.nickname.toLowerCase()}.mp3`
-            : "/audio/background_loop.mp3"
+            : bgMusicSrc
         }
         targetVolume={audioVolume}
       />
