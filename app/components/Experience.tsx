@@ -13,19 +13,42 @@ import { letters } from "../data/letters";
 gsap.registerPlugin(useGSAP, TextPlugin);
 
 export default function Experience() {
+  const [started, setStarted] = useState(false);
   const [introComplete, setIntroComplete] = useState(false);
   const [activeLetterId, setActiveLetterId] = useState<string | null>(null);
   const [audioVolume, setAudioVolume] = useState(0);
 
   const masterTimeline = useRef<gsap.core.Timeline | null>(null);
+  const containerRef = useRef<HTMLElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const startOverlayRef = useRef<HTMLDivElement>(null);
 
   // Data
   const activeLetter = letters.find((l) => l.id === activeLetterId) || null;
 
+  // Handle Start (Click or Enter)
+  useEffect(() => {
+    if (started) return;
+
+    const handleStart = () => setStarted(true);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter") setStarted(true);
+    };
+
+    window.addEventListener("click", handleStart);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("click", handleStart);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [started]);
+
   // Shortcut to Skip Intro
   useEffect(() => {
+    if (!started) return; // Disable skip before start
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.shiftKey && (e.key === "J" || e.key === "j")) {
         if (!introComplete && masterTimeline.current) {
@@ -35,10 +58,12 @@ export default function Experience() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [introComplete]);
+  }, [introComplete, started]);
 
   useGSAP(
     () => {
+      if (!started) return;
+
       // Check for mobile
       // const isMobile = window.matchMedia("(max-width: 768px)").matches;
 
@@ -61,6 +86,18 @@ export default function Experience() {
       // Initial Visibility
       gsap.set(introEl, { autoAlpha: 1, backgroundColor: "#000000" });
       gsap.set(textEl, { opacity: 1, text: "", filter: "blur(0px)", scale: 1 });
+
+      // Phase 0: Fade out Start Overlay
+      if (startOverlayRef.current) {
+        tl.to(startOverlayRef.current, {
+          opacity: 0,
+          duration: 1.5,
+          ease: "power2.inOut",
+          onComplete: () => {
+            gsap.set(startOverlayRef.current, { display: "none" });
+          },
+        });
+      }
 
       // Intro Text Sequence
       const introTexts = [
@@ -217,7 +254,7 @@ export default function Experience() {
 
       tl.set(introEl, { display: "none" });
     },
-    { scope: introRef },
+    { scope: containerRef, dependencies: [started] },
   );
 
   // Handlers to manage audio ducking
@@ -232,7 +269,21 @@ export default function Experience() {
   };
 
   return (
-    <main className="relative w-full h-screen overflow-hidden bg-black text-white selection:bg-white selection:text-black">
+    <main
+      ref={containerRef}
+      className="relative w-full h-screen overflow-hidden bg-black text-white selection:bg-white selection:text-black"
+    >
+      <div
+        ref={startOverlayRef}
+        className={`fixed inset-0 z-[100] flex items-center justify-center bg-black cursor-pointer ${
+          started ? "pointer-events-none" : ""
+        }`}
+      >
+        <div className="mt-12 text-xs uppercase tracking-[0.2em] text-gray-400 animate-pulse">
+          click or press enter to start -&gt;
+        </div>
+      </div>
+
       <Intro ref={introRef} />
 
       <MainMenu
