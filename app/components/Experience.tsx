@@ -12,6 +12,8 @@ import { letters } from "../data/letters";
 
 gsap.registerPlugin(useGSAP, TextPlugin);
 
+const SKIP_INTRO = true;
+
 export default function Experience() {
   const [started, setStarted] = useState(false);
   const [introComplete, setIntroComplete] = useState(false);
@@ -91,7 +93,7 @@ export default function Experience() {
       if (startOverlayRef.current) {
         tl.to(startOverlayRef.current, {
           opacity: 0,
-          duration: 1.5,
+          duration: SKIP_INTRO ? 0.5 : 1.5,
           ease: "power2.inOut",
           onComplete: () => {
             gsap.set(startOverlayRef.current, { display: "none" });
@@ -100,121 +102,126 @@ export default function Experience() {
       }
 
       // Intro Text Sequence
-      const introTexts = [
-        "Hey, Shiori.",
-        "It's me, Michael.",
-        "Do you know what day it is today?",
-        "That's right.",
-        "Today's Valentine's Day.",
-        "But also,",
-        "it is the day where an angel was summoned into this world...",
-        "the day where my favourite person was born.",
-        "So, to commemorate this important day,",
-        "Our fellow Amycord members and I made something for you.",
-        "Enjoy, and...",
-      ];
+      if (!SKIP_INTRO) {
+        const introTexts = [
+          "Hey, Shiori.",
+          "It's me, Michael.",
+          "Do you know what day it is today?",
+          "That's right.",
+          "Today's Valentine's Day.",
+          "But also,",
+          "it is the day where an angel was summoned into this world...",
+          "the day where my favourite person was born.",
+          "So, to commemorate this important day,",
+          "Our fellow Amycord members and I made something for you.",
+          "Enjoy, and...",
+        ];
 
-      // Phase 1: Black BG, Typewriter Text
-      introTexts.forEach((text) => {
-        // Type In
-        tl.to(textEl, {
-          text: { value: text, delimiter: "" },
-          duration: text.length * 0.08, // Slow typing speed
-          ease: "none",
+        // Phase 1: Black BG, Typewriter Text
+        introTexts.forEach((text) => {
+          // Type In
+          tl.to(textEl, {
+            text: { value: text, delimiter: "" },
+            duration: text.length * 0.08, // Slow typing speed
+            ease: "none",
+          });
+
+          // Pause
+          tl.to({}, { duration: 1.2 });
+
+          // Fade Out (Cinematic)
+          tl.to(textEl, {
+            opacity: 0,
+            duration: 1,
+            ease: "power2.in",
+          });
+
+          // Reset for next (Clear text, reset opacity)
+          tl.set(textEl, { text: "", opacity: 1 });
+          // Slight pause before next
+          tl.to({}, { duration: 0.5 });
         });
 
-        // Pause
-        tl.to({}, { duration: 1.2 });
+        // Phase 2: The "Happy Birthday" Sequence (Original Color Shift)
+        // Transition from Black to Blue (#8EC5FF)
 
-        // Fade Out (Cinematic)
-        tl.to(textEl, {
+        // Prepare text for final reveal - MUST BE ON TIMELINE
+        tl.set(textEl, {
+          text: "Happy Birthday!",
           opacity: 0,
-          duration: 1,
-          ease: "power2.in",
-        });
-
-        // Reset for next (Clear text, reset opacity)
-        tl.set(textEl, { text: "", opacity: 1 });
-        // Slight pause before next
-        tl.to({}, { duration: 0.5 });
-      });
-
-      // Phase 2: The "Happy Birthday" Sequence (Original Color Shift)
-      // Transition from Black to Blue (#8EC5FF)
-
-      // Prepare text for final reveal - MUST BE ON TIMELINE
-      tl.set(textEl, {
-        text: "Happy Birthday!",
-        opacity: 0,
-        scale: 1,
-        filter: "blur(10px)",
-      });
-
-      // 1. Animate to Blue
-      tl.to(introEl, {
-        backgroundColor: "#8EC5FF",
-        duration: 2.5,
-        ease: "power2.inOut",
-      });
-
-      // 2. Text In (Blur/Fade)
-      tl.to(
-        textEl,
-        {
-          opacity: 1,
-          filter: "blur(0px)",
-          duration: 2,
-          ease: "power2.out",
-        },
-        "<+=0.5",
-      );
-
-      // 3. Animate to Purple
-      tl.to(
-        introEl,
-        {
-          backgroundColor: "#C6B7FF",
-          duration: 2.5,
-          ease: "power2.inOut",
-        },
-        ">-0.5",
-      );
-
-      // 4. Animate to Dark Red
-      tl.to(
-        introEl,
-        {
-          backgroundColor: "#8B1E1E",
-          duration: 2.5,
-          ease: "power2.inOut",
-        },
-        ">-0.5",
-      );
-
-      // 5. Text Out (Blur/Scale)
-      tl.to(
-        textEl,
-        {
-          opacity: 0,
+          scale: 1,
           filter: "blur(10px)",
-          scale: 1.1,
-          duration: 1.5,
-          ease: "power2.in",
-        },
-        "<+=1",
-      );
+        });
+
+        // 1. Animate to Blue
+        tl.to(introEl, {
+          backgroundColor: "#8EC5FF",
+          duration: 2.5,
+          ease: "power2.inOut",
+        });
+
+        // 2. Text In (Blur/Fade)
+        tl.to(
+          textEl,
+          {
+            opacity: 1,
+            filter: "blur(0px)",
+            duration: 2,
+            ease: "power2.out",
+          },
+          "<+=0.5",
+        );
+
+        // 3. Animate to Purple
+        tl.to(
+          introEl,
+          {
+            backgroundColor: "#C6B7FF",
+            duration: 2.5,
+            ease: "power2.inOut",
+          },
+          ">-0.5",
+        );
+
+        // 4. Animate to Dark Red
+        tl.to(
+          introEl,
+          {
+            backgroundColor: "#8B1E1E",
+            duration: 2.5,
+            ease: "power2.inOut",
+          },
+          ">-0.5",
+        );
+
+        // 5. Text Out (Blur/Scale)
+        tl.to(
+          textEl,
+          {
+            opacity: 0,
+            filter: "blur(10px)",
+            scale: 1.1,
+            duration: 1.5,
+            ease: "power2.in",
+          },
+          "<+=1",
+        );
+
+        // Ensure Text is FULLY gone before we start fading the background/intro
+        tl.to({}, { duration: 0.5 }); // Safety buffer
+      }
 
       // Phase 3: Transition to Menu (Black)
 
-      // Ensure Text is FULLY gone before we start fading the background/intro
-      tl.to({}, { duration: 0.5 }); // Safety buffer
-
-      // Transition BG to Black
-      tl.to(introEl, {
-        backgroundColor: "#000000",
-        duration: 2,
-        ease: "expo.inOut",
-      });
+      // Transition BG to Black (if not already)
+      // If SKIP_INTRO, bg is already black (initial set). If not, it's Dark Red.
+      if (!SKIP_INTRO) {
+        tl.to(introEl, {
+          backgroundColor: "#000000",
+          duration: 2,
+          ease: "expo.inOut",
+        });
+      }
 
       // Simultaneously bring in the menu elements
       if (menuRef.current) {
@@ -232,7 +239,7 @@ export default function Experience() {
             duration: 3, // Slower fade for smoother reveal of stars
             ease: "power2.inOut",
           },
-          ">-1",
+          SKIP_INTRO ? ">" : ">-1", // If skipping, start immediately after overlay fade. If not, overlap with BG fade.
         );
 
         // Slide up Menu Elements
