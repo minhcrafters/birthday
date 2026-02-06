@@ -1,17 +1,17 @@
 import React, { forwardRef, useLayoutEffect, useRef, useEffect } from "react";
 import { LetterData } from "../data/letters";
 
-interface MainMenuProps {
+interface LettersListProps {
   letters: LetterData[];
   onLetterSelect: (id: string) => void;
   onGalleryOpen: () => void;
   onBack: () => void;
   visible: boolean;
-  starfieldSpeedRef: React.MutableRefObject<number>;
+  starfieldSpeedRef: React.RefObject<number>;
   controlsStarfield?: boolean;
 }
 
-const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
+const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
   (
     {
       letters,
@@ -320,6 +320,6 @@ const MainMenu = forwardRef<HTMLDivElement, MainMenuProps>(
   },
 );
 
-MainMenu.displayName = "MainMenu";
+LettersList.displayName = "MainMenu";
 
-export default MainMenu;
+export default LettersList;

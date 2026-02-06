@@ -6,7 +6,7 @@ import { useGSAP } from "@gsap/react";
 import { TextPlugin } from "gsap/TextPlugin";
 import Intro from "./Intro";
 import TitleScreen from "./TitleScreen";
-import MainMenu from "./MainMenu";
+import LettersList from "./LettersList";
 import LetterView from "./LetterView";
 import AudioControl from "./AudioControl";
 import { letters } from "../data/letters";
@@ -252,7 +252,7 @@ export default function Experience() {
         // 4. Starfield Deceleration (Arrival Phase)
         tl.to(speedProxy, {
           val: 0,
-          duration: 1.8, // Faster braking
+          duration: 1.5, // Faster braking
           ease: "power3.out",
           onUpdate: () => {
             starfieldSpeedRef.current = speedProxy.val;
@@ -280,7 +280,7 @@ export default function Experience() {
           {
             y: "20vh",
             opacity: 0,
-            duration: 1.8, // Matches deceleration
+            duration: 1.5, // Matches deceleration
             ease: "power3.out",
             stagger: 0.1,
           },
@@ -440,7 +440,7 @@ export default function Experience() {
         )}
       </div>
 
-      <MainMenu
+      <LettersList
         ref={menuRef}
         letters={letters}
         visible={introComplete}

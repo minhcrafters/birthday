@@ -68,20 +68,17 @@ export default function GlobeGallery({ onClose }: GlobeGalleryProps) {
   };
 
   return (
-    <div
-      ref={containerRef}
-      className="fixed inset-0 z-[60] bg-black text-white"
-    >
+    <div ref={containerRef} className="fixed inset-0 z-60 bg-black text-white">
       {/* Back Button - Consistent with MainMenu */}
       <div className="absolute top-6 left-6 md:top-8 md:left-8 z-50">
         <button
           onClick={handleClose}
           className="group flex items-center gap-3 text-gray-400 hover:text-white transition-colors"
         >
-          <div className="p-3 md:p-2 border border-white/30 group-hover:border-white transition-colors duration-300 backdrop-blur-sm bg-black/20">
+          <div className="p-1 border border-gray-600 rounded-full group-hover:border-white transition-all">
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 md:h-4 md:w-4"
+              className="h-4 w-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -94,8 +91,8 @@ export default function GlobeGallery({ onClose }: GlobeGalleryProps) {
               />
             </svg>
           </div>
-          <span className="text-[10px] uppercase tracking-[0.2em] font-medium hidden md:block">
-            Back to Menu
+          <span className="text-[10px] uppercase tracking-[0.2em] hidden md:block">
+            Back
           </span>
         </button>
       </div>

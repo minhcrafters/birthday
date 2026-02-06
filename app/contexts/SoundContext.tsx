@@ -1,6 +1,12 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 type SoundName = "click" | "hover" | "warp" | "open" | "close";
 
@@ -16,8 +22,8 @@ const SoundContext = createContext<SoundContextType | null>(null);
 const SFX_MAP: Record<SoundName, string> = {
   click: "/audio/test1.mp3", // Placeholder
   hover: "/audio/test2.mp3", // Placeholder
-  warp: "/audio/test3.mp3",  // Placeholder
-  open: "/audio/test1.mp3",  // Reuse click for now
+  warp: "/audio/test3.mp3", // Placeholder
+  open: "/audio/test1.mp3", // Reuse click for now
   close: "/audio/test2.mp3", // Reuse hover for now
 };
 
@@ -28,8 +34,12 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Preload sounds
     Object.entries(SFX_MAP).forEach(([name, src]) => {
-      audioPool.current[name] = [new Audio(src), new Audio(src), new Audio(src)]; // Pool of 3 to allow overlapping
-      audioPool.current[name].forEach(audio => {
+      audioPool.current[name] = [
+        new Audio(src),
+        new Audio(src),
+        new Audio(src),
+      ]; // Pool of 3 to allow overlapping
+      audioPool.current[name].forEach((audio) => {
         audio.volume = 0.5;
         audio.preload = "auto";
       });
@@ -44,11 +54,11 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
 
     // Find a free player or just use the first one and reset it
     const availablePlayer = pool.find((p) => p.paused) || pool[0];
-    
+
     availablePlayer.currentTime = 0;
     availablePlayer.play().catch((err) => {
       // Audio context might be locked, expected behavior before interaction
-      // console.warn("Audio play failed", err); 
+      console.warn("Audio play failed", err);
     });
   };
 

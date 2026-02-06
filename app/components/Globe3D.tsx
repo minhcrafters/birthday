@@ -163,7 +163,7 @@ const DotSphere = () => {
         const radius = 2;
 
         // Denser points for continuous neon look
-        const step = 4;
+        const step = 8;
 
         for (let y = 0; y < height; y += step) {
           for (let x = 0; x < width; x += step) {
@@ -245,7 +245,7 @@ const CameraController = ({
   useEffect(() => {
     if (isExiting) {
       if (controlsRef.current) controlsRef.current.enabled = false;
-      
+
       gsap.to(camera.position, {
         x: 0,
         y: 0,

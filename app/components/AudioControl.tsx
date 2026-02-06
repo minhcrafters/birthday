@@ -102,7 +102,7 @@ const AudioControl = ({ src, targetVolume }: AudioControlProps) => {
           // 2. Animate Incoming
           gsap.to(incoming, {
             volume: targetVolume,
-            duration: 2,
+            duration: 1,
             ease: "power1.in",
           });
         }
@@ -110,7 +110,7 @@ const AudioControl = ({ src, targetVolume }: AudioControlProps) => {
         // 3. Fade out Outgoing (always fade out old one)
         gsap.to(outgoing, {
           volume: 0,
-          duration: 2,
+          duration: 1,
           ease: "power1.out",
           onComplete: () => {
             outgoing.pause();
