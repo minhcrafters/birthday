@@ -16,7 +16,7 @@ import { useSound } from "../contexts/SoundContext";
 
 gsap.registerPlugin(useGSAP, TextPlugin);
 
-const SKIP_INTRO = true;
+const SKIP_INTRO = false;
 
 export default function Experience() {
   const { playSfx } = useSound();
@@ -146,16 +146,18 @@ export default function Experience() {
       if (!SKIP_INTRO) {
         const introTexts = [
           "Hey, Shiori.",
-          "It's me, Michael.",
           "Do you know what day it is today?",
           "That's right.",
           "Today's Valentine's Day.",
           "But also,",
           "it is the day where an angel was summoned into this world...",
-          "the day where my favourite person was born.",
-          "So, to commemorate this important day,",
-          "Our fellow Amycord members and I made something for you.",
-          "Enjoy, and...",
+          "the day where a best friend to many people was born.",
+          "So we made something for you.",
+          "A small place filled with words we never say out loud...",
+          "and memories you might recognise.",
+          "Take your time.",
+          "There’s something waiting for you at the end.",
+          "For now...",
         ];
 
         // Phase 1: Black BG, Typewriter Text
