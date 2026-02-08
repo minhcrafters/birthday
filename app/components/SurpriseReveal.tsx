@@ -3,6 +3,8 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { LetterData } from "../data/letters";
 
+const SURPRISE_UNLOCKED = false;
+
 interface SurpriseRevealProps {
   letter: LetterData;
   onComplete: () => void;
@@ -48,6 +50,38 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
             gsap.set(whiteOverlayRef.current, { display: "none" });
           },
         });
+      }
+
+      // Check if unlocked
+      if (!SURPRISE_UNLOCKED) {
+        // Locked State Animation
+        tl.call(() => {
+          if (textRef.current) {
+            textRef.current.innerText = "not the time yet";
+            textRef.current.className =
+              "text-xl md:text-3xl font-light text-gray-300 font-serif tracking-[0.2em] uppercase drop-shadow-lg";
+          }
+        });
+
+        tl.fromTo(
+          textRef.current,
+          { opacity: 0, scale: 0.95 },
+          {
+            opacity: 1,
+            scale: 1,
+            duration: 2,
+            ease: "power2.out",
+          },
+          "-=1.5",
+        );
+
+        // Allow closing immediately in locked state
+        tl.call(() => setCanClose(true));
+
+        // Show close hint earlier
+        tl.to(".close-hint", { opacity: 1, duration: 1, delay: 1 });
+
+        return; // Stop here, don't show letter content
       }
 
       // Loop through paragraphs - ONE BY ONE
@@ -153,7 +187,7 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
 
       {/* Close Hint */}
       <div className="close-hint opacity-0 absolute bottom-12 text-xs uppercase tracking-[0.3em] text-gray-500 animate-pulse pointer-events-none">
-        Fin.
+        {SURPRISE_UNLOCKED ? "Fin." : "Click to close"}
       </div>
     </div>
   );
