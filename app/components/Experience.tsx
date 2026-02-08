@@ -28,7 +28,6 @@ const INTRO_TEXTS = [
   "Do you know what day it is today?",
   "That's right.",
   "Today's Valentine's Day.",
-  "But also,",
   "it is the day where an angel was summoned into this world...",
   "the day where a best friend to many people was born.",
   "So we made something for you.",
@@ -235,22 +234,99 @@ export default function Experience() {
       if (!SKIP_INTRO) {
         // Add text steps to nested timeline
         INTRO_TEXTS.forEach((text) => {
+          // Special handling for "Today's Valentine's Day."
+          if (text === "Today's Valentine's Day.") {
+            // 1. Type In "Today's Valentine's Day."
+            textTl.to(textEl, {
+              text: { value: text, delimiter: "" },
+              duration: text.length * 0.08,
+              ease: "none",
+              onUpdate: function () {
+                const currentText = this.targets()[0].textContent;
+                const prevLen = this._prevLen || 0;
+                if (currentText.length > prevLen) {
+                  playSfx("blip");
+                  this._prevLen = currentText.length;
+                }
+              },
+              onStart: function () {
+                this._prevLen = 0;
+              },
+            });
+
+            // 2. Short Pause (0.6s - half of normal 1.2s)
+            textTl.to({}, { duration: 0.6 });
+
+            // 3. Backspace "Valentine's Day."
+            // Target: "Today's " (length 8)
+            const fullStr = "Today's Valentine's Day.";
+            const targetStr = "Today's ";
+            const backspaceObj = { len: fullStr.length };
+
+            textTl.to(backspaceObj, {
+              len: targetStr.length,
+              duration: (fullStr.length - targetStr.length) * 0.05, // Fast backspace
+              ease: "none",
+              onUpdate: () => {
+                if (textEl) {
+                  textEl.textContent = fullStr.substring(
+                    0,
+                    Math.ceil(backspaceObj.len),
+                  );
+                  playSfx("blip_alt");
+                }
+              },
+            });
+
+            // 4. Type "your birthday."
+            const finalText = "Today's your birthday.";
+            textTl.to(textEl, {
+              text: { value: finalText, delimiter: "" },
+              duration: "your birthday.".length * 0.08,
+              ease: "none",
+              onUpdate: function () {
+                const currentText = this.targets()[0].textContent;
+                const prevLen = this._prevLen || 0;
+                if (currentText.length > prevLen) {
+                  playSfx("blip");
+                  this._prevLen = currentText.length;
+                }
+              },
+              onStart: function () {
+                // Initialize _prevLen to current length so we only blip on new chars
+                this._prevLen = targetStr.length;
+              },
+            });
+
+            // 5. Normal Pause
+            textTl.to({}, { duration: 1.2 });
+
+            // 6. Fade Out
+            textTl.to(textEl, {
+              opacity: 0,
+              duration: 1,
+              ease: "power2.in",
+            });
+
+            // Reset
+            textTl.set(textEl, { text: "", opacity: 1 });
+            textTl.to({}, { duration: 0.5 });
+
+            return; // Skip the standard loop for this item
+          }
+
+          // STANDARD LOGIC for all other texts
           // Type In
           textTl.to(textEl, {
             text: { value: text, delimiter: "" },
             duration: text.length * 0.08, // Slow typing speed
             ease: "none",
             onUpdate: function () {
+              // @ts-ignore - GSAP specific typing
               const currentText = this.targets()[0].textContent;
               // Simple heuristic: if text grew, play sound
-              // We use a small randomized condition to not play on EVERY frame if multiple frames add one char,
-              // or to skip some for less annoyance. But for typing effect, every char is usually okay.
-              // To avoid spamming, we check if length changed.
               const prevLen = this._prevLen || 0;
               if (currentText.length > prevLen) {
-                // Play sound every 2 characters or so to keep it pleasant?
-                // Or every character but low volume (handled in SoundContext).
-                // Let's try every character.
                 playSfx("blip");
                 this._prevLen = currentText.length;
               }
@@ -513,7 +589,7 @@ export default function Experience() {
       if (transitionOverlayRef.current) {
         // Fade out music immediately
         setAudioVolume(0);
-        
+
         gsap.set(transitionOverlayRef.current, {
           display: "block",
           opacity: 0,
@@ -526,7 +602,7 @@ export default function Experience() {
             setShowSurprise(true);
             setMenuInteractive(false); // Disable menu interaction
             // Stop loops entirely after fade is complete/during transition
-            setShouldPlayLoops(false); 
+            setShouldPlayLoops(false);
 
             // Hide the overlay shortly after SurpriseReveal mounts (z-300) to prevent it being visible when SurpriseReveal fades out later
             gsap.delayedCall(0.1, () => {

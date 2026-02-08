@@ -8,7 +8,14 @@ import React, {
   useState,
 } from "react";
 
-type SoundName = "click" | "hover" | "warp" | "open" | "close" | "blip";
+type SoundName =
+  | "click"
+  | "hover"
+  | "warp"
+  | "open"
+  | "close"
+  | "blip"
+  | "blip_alt";
 
 interface SoundContextType {
   playSfx: (name: SoundName) => void;
@@ -26,6 +33,7 @@ const SFX_MAP: Record<SoundName, string> = {
   open: "/audio/test1.mp3", // Reuse click for now
   close: "/audio/test2.mp3", // Reuse hover for now
   blip: "/audio/blip.wav",
+  blip_alt: "/audio/blip_alt.wav",
 };
 
 export function SoundProvider({ children }: { children: React.ReactNode }) {
