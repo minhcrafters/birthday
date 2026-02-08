@@ -34,9 +34,7 @@ const Envelope = ({
       onClick={onClick}
       disabled={isLocked}
       className={`group relative flex flex-col items-center justify-center p-6 transition-all duration-500 focus:outline-none w-full ${
-        isLast
-          ? "aspect-[2/1] md:aspect-[3/1]"
-          : "aspect-square"
+        isLast ? "aspect-2/1 md:aspect-3/1" : "aspect-square"
       } ${isLocked ? "opacity-50 cursor-not-allowed grayscale" : "hover:scale-105"}`}
     >
       {/* Glassy Background Card */}
@@ -51,9 +49,7 @@ const Envelope = ({
       {/* Envelope Icon (SVG) */}
       <div
         className={`relative z-10 w-full h-full flex items-center justify-center transition-colors duration-500 ${
-          isLocked
-            ? "text-gray-600"
-            : "text-white/80 group-hover:text-white"
+          isLocked ? "text-gray-600" : "text-white/80 group-hover:text-white"
         } ${isRead && !isLast ? "text-gray-500" : ""}`}
       >
         {isLocked ? (
@@ -76,7 +72,7 @@ const Envelope = ({
           // Simple Geometric Envelope
           <svg
             viewBox="0 0 100 70"
-            className={`w-2/3 h-2/3 drop-shadow-lg transition-transform duration-700 ${
+            className={`w-2/3 h-2/3 drop-shadow-lg transition-transform duration-700 overflow-visible ${
               isLast ? "group-hover:scale-110" : "group-hover:-translate-y-2"
             } ${isRead && !isLast ? "opacity-50" : ""}`}
             fill="none"
@@ -91,7 +87,7 @@ const Envelope = ({
             <path
               d="M5 5l45 35 45-35"
               className={`transition-all duration-700 ${
-                isRead ? "origin-top -scale-y-100 translate-y-[-10px]" : ""
+                isRead ? "origin-top -scale-y-100 translate-y-2.5" : ""
               }`}
             />
             {/* Bottom folds */}
@@ -111,13 +107,9 @@ const Envelope = ({
       <div className="absolute bottom-4 left-0 right-0 text-center z-20">
         <span
           className={`font-serif tracking-widest uppercase text-xs md:text-sm transition-colors duration-300 ${
-            isLast
-              ? "text-base md:text-lg font-bold"
-              : ""
+            isLast ? "text-base md:text-lg font-bold" : ""
           } ${
-            isLocked
-              ? "text-gray-700"
-              : "text-gray-400 group-hover:text-white"
+            isLocked ? "text-gray-700" : "text-gray-400 group-hover:text-white"
           } ${isRead && !isLast ? "text-gray-600" : ""}`}
         >
           {isLocked ? "LOCKED" : letter.nickname}
@@ -140,7 +132,7 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
       readLetterIds = [],
       isSurpriseUnlocked = false,
     },
-    ref
+    ref,
   ) => {
     const scrollContainerRef = useRef<HTMLElement>(null);
     const lastScrollTopRef = useRef(0);
@@ -292,7 +284,7 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
         </div>
       </div>
     );
-  }
+  },
 );
 
 LettersList.displayName = "MainMenu";

@@ -6,6 +6,7 @@ interface MusicManagerProps {
   textDuration?: number; // Prop for calculating offset
   playLoops: boolean;
   inTitleScreen: boolean;
+  isMenuMounted?: boolean; // New prop to handle transition fade out
   volume: number; // 0 to 1
   onIntroEnd: () => void;
   onDurationLoaded?: (duration: number) => void;
@@ -17,6 +18,7 @@ export default function MusicManager({
   textDuration = 0,
   playLoops,
   inTitleScreen,
+  isMenuMounted = false,
   volume,
   onIntroEnd,
   onDurationLoaded,
@@ -215,7 +217,7 @@ export default function MusicManager({
       // Notify parent when intro is theoretically done
       // (This is redundant if parent syncs via duration, but good for safety)
       const timeToIntroEnd = (loopsStartTime - now) * 1000;
-      
+
       introTimeoutRef.current = setTimeout(() => {
         onIntroEnd();
       }, timeToIntroEnd);
@@ -328,8 +330,15 @@ export default function MusicManager({
     }
 
     if (gainVocalsRef.current) {
-      const targetVocalVol = inTitleScreen ? volume : 0;
-      let duration = 1.5;
+      // Vocals are active ONLY if we are in Title Screen AND Menu hasn't started mounting (transitioning out) yet.
+      const shouldPlayVocals = inTitleScreen && !isMenuMounted;
+      const targetVocalVol = shouldPlayVocals ? volume : 0;
+
+      let duration = 3.0;
+
+      // if (inTitleScreen && isMenuMounted) {
+      //   duration = 2.5;
+      // }
 
       // Special case: First entry to Title Screen (Intro -> Title transition)
       // We want this to be instant (Gapless drop) so the vocals hit hard immediately
@@ -341,11 +350,11 @@ export default function MusicManager({
       gsap.to(gainVocalsRef.current.gain, {
         value: targetVocalVol,
         duration: duration,
-        ease: "power2.inOut",
+        ease: "power2.in",
         overwrite: "auto",
       });
     }
-  }, [volume, inTitleScreen]);
+  }, [volume, inTitleScreen, isMenuMounted, hasIntroTransitionHappened]);
 
   return null;
 }

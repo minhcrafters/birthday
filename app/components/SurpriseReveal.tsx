@@ -127,7 +127,7 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black ${
+      className={`fixed inset-0 z-300 flex flex-col items-center justify-center bg-black ${
         canClose ? "cursor-pointer" : "cursor-default"
       }`}
       onClick={handleClose}
@@ -135,14 +135,14 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
       {/* White Flash Overlay for Entrance Transition */}
       <div
         ref={whiteOverlayRef}
-        className="absolute inset-0 z-[310] bg-white pointer-events-none"
+        className="absolute inset-0 z-310 bg-white pointer-events-none"
       />
 
       {/* Background Ambience */}
       <div className="absolute inset-0 bg-gradient-radial from-white/5 to-transparent opacity-50 pointer-events-none"></div>
 
       {/* Centered Text Container - Updates dynamically */}
-      <div className="relative z-[30] max-w-4xl px-8 flex justify-center items-center min-h-50">
+      <div className="relative z-30 max-w-4xl px-8 flex justify-center items-center min-h-50">
         <div
           ref={textRef}
           className="text-white font-serif tracking-wider leading-relaxed text-center opacity-0 will-change-transform will-change-opacity"

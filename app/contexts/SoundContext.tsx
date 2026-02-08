@@ -20,7 +20,7 @@ const SoundContext = createContext<SoundContextType | null>(null);
 
 // Map sound names to files
 const SFX_MAP: Record<SoundName, string> = {
-  click: "/audio/test1.mp3", // Placeholder
+  click: "/audio/click.wav",
   hover: "/audio/test2.mp3", // Placeholder
   warp: "/audio/test3.mp3", // Placeholder
   open: "/audio/test1.mp3", // Reuse click for now
@@ -38,9 +38,12 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
       // Determine pool size based on sound type
       // Blips need higher concurrency for rapid typing
       const poolSize = name === "blip" ? 8 : 3;
-      
-      audioPool.current[name] = Array.from({ length: poolSize }, () => new Audio(src));
-      
+
+      audioPool.current[name] = Array.from(
+        { length: poolSize },
+        () => new Audio(src),
+      );
+
       audioPool.current[name].forEach((audio) => {
         audio.volume = name === "blip" ? 0.15 : 0.5; // Lower volume for repetitive blips
         audio.preload = "auto";

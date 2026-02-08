@@ -75,19 +75,21 @@ export default function Experience() {
 
   // Helper to calculate natural text duration
   const calculateTextDuration = () => {
-      // Formula matches GSAP loop: (len * 0.08) + 1.2 + 1.0 + 0.5
-      return INTRO_TEXTS.reduce((acc, text) => {
-          return acc + (text.length * 0.08) + 2.7;
-      }, 0) + 1.5; // +1.5 for initial overlay fade out
+    // Formula matches GSAP loop: (len * 0.08) + 1.2 + 1.0 + 0.5
+    return (
+      INTRO_TEXTS.reduce((acc, text) => {
+        return acc + text.length * 0.08 + 2.7;
+      }, 0) + 1.5
+    ); // +1.5 for initial overlay fade out
   };
 
   useEffect(() => {
-     if (introDuration > 0) {
-         const textDur = calculateTextDuration();
-         // If text is longer than audio, we delay the audio start
-         const delay = Math.max(0, textDur - introDuration);
-         setIntroDelay(delay);
-     }
+    if (introDuration > 0) {
+      const textDur = calculateTextDuration();
+      // If text is longer than audio, we delay the audio start
+      const delay = Math.max(0, textDur - introDuration);
+      setIntroDelay(delay);
+    }
   }, [introDuration]);
 
   const handleTitleScreenStart = () => {
@@ -96,14 +98,14 @@ export default function Experience() {
     setHasSeenTitleIntro(true); // Mark intro as seen when leaving
     // Don't reset speed here, let the animation interpolate from current speed
   };
-  
+
   // Callback when Intro Audio finishes
   // Wrapped in useCallback to prevent unnecessary re-renders in MusicManager
   const handleIntroAudioEnd = React.useCallback(() => {
     console.log("Intro audio finished. Resuming timeline if paused.");
     audioIntroCompleteRef.current = true;
     if (masterTimeline.current && masterTimeline.current.paused()) {
-        masterTimeline.current.play();
+      masterTimeline.current.play();
     }
   }, []);
 
@@ -163,7 +165,7 @@ export default function Experience() {
           // Manually trigger states that would be skipped by progress(1)
           setShowTitleScreen(true);
           setShouldPlayLoops(true);
-          
+
           masterTimeline.current.progress(1); // Jump to end
         }
       }
@@ -236,24 +238,23 @@ export default function Experience() {
             duration: text.length * 0.08, // Slow typing speed
             ease: "none",
             onUpdate: function () {
-              // @ts-ignore - GSAP specific typing
               const currentText = this.targets()[0].textContent;
               // Simple heuristic: if text grew, play sound
               // We use a small randomized condition to not play on EVERY frame if multiple frames add one char,
               // or to skip some for less annoyance. But for typing effect, every char is usually okay.
               // To avoid spamming, we check if length changed.
-              const prevLen = (this as any)._prevLen || 0;
+              const prevLen = this._prevLen || 0;
               if (currentText.length > prevLen) {
-                 // Play sound every 2 characters or so to keep it pleasant? 
-                 // Or every character but low volume (handled in SoundContext).
-                 // Let's try every character.
-                 playSfx("blip");
-                 (this as any)._prevLen = currentText.length;
+                // Play sound every 2 characters or so to keep it pleasant?
+                // Or every character but low volume (handled in SoundContext).
+                // Let's try every character.
+                playSfx("blip");
+                this._prevLen = currentText.length;
               }
             },
-            onStart: function() {
-                (this as any)._prevLen = 0;
-            }
+            onStart: function () {
+              this._prevLen = 0;
+            },
           });
 
           // Pause
@@ -272,23 +273,22 @@ export default function Experience() {
           textTl.to({}, { duration: 0.5 });
         });
       }
-        
+
       // Add nested timeline to master
       tl.add(textTl);
 
       // --- WAIT FOR AUDIO GATE ---
       // If audio is LONGER than text, we pause here until audio finishes.
       tl.call(() => {
-           if (!audioIntroCompleteRef.current) {
-               console.log("Timeline pausing for audio completion...");
-               tl.pause();
-           } else {
-               console.log("Audio already done, continuing timeline...");
-           }
+        if (!audioIntroCompleteRef.current) {
+          console.log("Timeline pausing for audio completion...");
+          tl.pause();
+        } else {
+          console.log("Audio already done, continuing timeline...");
+        }
       });
 
       // Phase 2: Game-like Title Screen (Always Runs)
-
 
       // Ensure Text is gone (in case we skipped or just finished)
       tl.set(textEl, { display: "none" });
@@ -301,7 +301,7 @@ export default function Experience() {
       // Show Title Screen Component (via State)
       // This mounts the child component, triggering its internal entrance animation
       tl.call(() => setShowTitleScreen(true));
-      
+
       // TRIGGER LOOPS HERE: Title screen is now active/visible
       tl.call(() => setShouldPlayLoops(true));
 
@@ -317,7 +317,7 @@ export default function Experience() {
       // Pause Timeline and wait for User Interaction (Start Button)
       tl.addPause();
     },
-    { scope: containerRef, dependencies: [started, introDuration] }
+    { scope: containerRef, dependencies: [started, introDuration] },
   );
 
   // New Effect: Handle Transition Sequence when Menu Mounts OR Unmounts
@@ -410,8 +410,8 @@ export default function Experience() {
         // But we might want to ensure volume is up?
         tl.call(
           () => {
-             // We don't set bgMusicSrc anymore for global loop
-             setAudioVolume(0.5);
+            // We don't set bgMusicSrc anymore for global loop
+            setAudioVolume(0.5);
           },
           undefined,
           "<",
@@ -508,6 +508,9 @@ export default function Experience() {
 
       // White Fade Out Sequence
       if (transitionOverlayRef.current) {
+        // Fade out music immediately
+        setAudioVolume(0);
+        
         gsap.set(transitionOverlayRef.current, {
           display: "block",
           opacity: 0,
@@ -519,6 +522,8 @@ export default function Experience() {
           onComplete: () => {
             setShowSurprise(true);
             setMenuInteractive(false); // Disable menu interaction
+            // Stop loops entirely after fade is complete/during transition
+            setShouldPlayLoops(false); 
 
             // Hide the overlay shortly after SurpriseReveal mounts (z-300) to prevent it being visible when SurpriseReveal fades out later
             gsap.delayedCall(0.1, () => {
@@ -569,19 +574,20 @@ export default function Experience() {
       />
 
       <Intro ref={introRef} />
-      
+
       {/* Background Music Manager */}
-      <MusicManager 
-         started={started}
-         textDuration={calculateTextDuration()} // Pass duration directly
-         playLoops={shouldPlayLoops}
-         inTitleScreen={showTitleScreen} // Vocal stems active only when TitleScreen is visible (and not hidden by menu)
-         // Note: showTitleScreen is true during Menu->Title transition, so vocals fade in.
-         // When Menu is mounted, showTitleScreen becomes false at end of transition.
-         volume={audioVolume}
-         onIntroEnd={handleIntroAudioEnd}
-         onDurationLoaded={(d) => setIntroDuration(d)}
-         onLoopsStarted={handleLoopsStarted}
+      <MusicManager
+        started={started}
+        textDuration={calculateTextDuration()} // Pass duration directly
+        playLoops={shouldPlayLoops}
+        inTitleScreen={showTitleScreen} // Vocal stems active only when TitleScreen is visible (and not hidden by menu)
+        // Note: showTitleScreen is true during Menu->Title transition, so vocals fade in.
+        // When Menu is mounted, showTitleScreen becomes false at end of transition.
+        isMenuMounted={menuMounted}
+        volume={audioVolume}
+        onIntroEnd={handleIntroAudioEnd}
+        onDurationLoaded={(d) => setIntroDuration(d)}
+        onLoopsStarted={handleLoopsStarted}
       />
 
       {/* Title Screen Layer - Persistent Wrapper */}
@@ -632,15 +638,15 @@ export default function Experience() {
 
       {/* AudioControl ONLY for Letter Voiceovers (if any) or extra SFX, NOT BGM */}
       {activeLetter && (
-          <AudioControl
-            src={`/audio/${activeLetter.id}.mp3`}
-            targetVolume={audioVolume}
-          />
+        <AudioControl
+          src={`/audio/${activeLetter.id}.mp3`}
+          targetVolume={audioVolume}
+        />
       )}
 
       <div
         ref={transitionOverlayRef}
-        className="fixed inset-0 z-[200] bg-white pointer-events-none opacity-0 hidden"
+        className="fixed inset-0 z-200 bg-white pointer-events-none opacity-0 hidden"
       />
 
       {showSurprise && (
