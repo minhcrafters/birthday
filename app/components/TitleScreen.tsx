@@ -1,17 +1,22 @@
 import React, { useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import LyricsDisplay from "./LyricsDisplay";
 
 interface TitleScreenProps {
   onStart: () => void;
   onGalleryOpen: () => void;
   skipIntro?: boolean;
+  loopsStartTime?: number;
+  audioContext?: AudioContext | null;
 }
 
 const TitleScreen = ({
   onStart,
   onGalleryOpen,
   skipIntro = false,
+  loopsStartTime = 0,
+  audioContext = null,
 }: TitleScreenProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -133,10 +138,12 @@ const TitleScreen = ({
         </div>
       </div>
 
-      {/* Footer / Version */}
-      <div className="absolute bottom-8 text-[9px] text-gray-800 tracking-widest font-mono">
-        VER 2.14.2025 // AMYCORD
-      </div>
+      {/* Lyrics Display (replaces copyright text) */}
+      <LyricsDisplay
+        loopsStartTime={loopsStartTime}
+        audioContext={audioContext}
+        isInTitleScreen={true}
+      />
     </div>
   );
 };

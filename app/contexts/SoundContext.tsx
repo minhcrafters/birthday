@@ -8,7 +8,7 @@ import React, {
   useState,
 } from "react";
 
-type SoundName = "click" | "hover" | "warp" | "open" | "close";
+type SoundName = "click" | "hover" | "warp" | "open" | "close" | "blip";
 
 interface SoundContextType {
   playSfx: (name: SoundName) => void;
@@ -25,6 +25,7 @@ const SFX_MAP: Record<SoundName, string> = {
   warp: "/audio/test3.mp3", // Placeholder
   open: "/audio/test1.mp3", // Reuse click for now
   close: "/audio/test2.mp3", // Reuse hover for now
+  blip: "/audio/blip.wav",
 };
 
 export function SoundProvider({ children }: { children: React.ReactNode }) {
@@ -34,13 +35,14 @@ export function SoundProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     // Preload sounds
     Object.entries(SFX_MAP).forEach(([name, src]) => {
-      audioPool.current[name] = [
-        new Audio(src),
-        new Audio(src),
-        new Audio(src),
-      ]; // Pool of 3 to allow overlapping
+      // Determine pool size based on sound type
+      // Blips need higher concurrency for rapid typing
+      const poolSize = name === "blip" ? 8 : 3;
+      
+      audioPool.current[name] = Array.from({ length: poolSize }, () => new Audio(src));
+      
       audioPool.current[name].forEach((audio) => {
-        audio.volume = 0.5;
+        audio.volume = name === "blip" ? 0.15 : 0.5; // Lower volume for repetitive blips
         audio.preload = "auto";
       });
     });

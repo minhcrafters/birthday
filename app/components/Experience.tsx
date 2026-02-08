@@ -1,5 +1,12 @@
 "use client";
 
+import AudioControl from "./AudioControl";
+import MusicManager from "./MusicManager";
+import { letters } from "../data/letters";
+import Starfield from "./Starfield";
+import GlobeGallery from "./GlobeGallery";
+import SurpriseReveal from "./SurpriseReveal";
+import { useSound } from "../contexts/SoundContext";
 import React, { useRef, useState, useEffect } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -8,23 +15,37 @@ import Intro from "./Intro";
 import TitleScreen from "./TitleScreen";
 import LettersList from "./LettersList";
 import LetterView from "./LetterView";
-import AudioControl from "./AudioControl";
-import { letters } from "../data/letters";
-import Starfield from "./Starfield";
-import GlobeGallery from "./GlobeGallery";
-import { useSound } from "../contexts/SoundContext";
 
 gsap.registerPlugin(useGSAP, TextPlugin);
 
 const SKIP_INTRO = false;
+
+const INTRO_TEXTS = [
+  "Hey, Shiori.",
+  "Do you know what day it is today?",
+  "That's right.",
+  "Today's Valentine's Day.",
+  "But also,",
+  "it is the day where an angel was summoned into this world...",
+  "the day where a best friend to many people was born.",
+  "So we made something for you.",
+  "A small place filled with words we never say out loud...",
+  "and memories you might recognise.",
+  "Take your time.",
+  "There’s something waiting for you at the end.",
+  "For now...",
+];
 
 export default function Experience() {
   const { playSfx } = useSound();
   const [started, setStarted] = useState(false);
   const [introComplete, setIntroComplete] = useState(false);
   const [activeLetterId, setActiveLetterId] = useState<string | null>(null);
-  const [audioVolume, setAudioVolume] = useState(0);
-  const [bgMusicSrc, setBgMusicSrc] = useState(""); // Initially silent
+  const [audioVolume, setAudioVolume] = useState(0.5); // Default BGM volume 0.5
+  const [shouldPlayLoops, setShouldPlayLoops] = useState(false); // Controls when loops start
+  const [introDuration, setIntroDuration] = useState(0); // For syncing
+  const [loopsStartTime, setLoopsStartTime] = useState(0); // Audio loop start time
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null); // Audio context
 
   const masterTimeline = useRef<gsap.core.Timeline | null>(null);
   const containerRef = useRef<HTMLElement>(null);
@@ -32,6 +53,7 @@ export default function Experience() {
   const menuRef = useRef<HTMLDivElement>(null);
   const startOverlayRef = useRef<HTMLDivElement>(null);
   const titleScreenWrapperRef = useRef<HTMLDivElement>(null);
+  const audioIntroCompleteRef = useRef(false);
 
   const [showTitleScreen, setShowTitleScreen] = useState(false);
   const [hasSeenTitleIntro, setHasSeenTitleIntro] = useState(false); // New State
@@ -39,7 +61,34 @@ export default function Experience() {
   const [menuMounted, setMenuMounted] = useState(false); // New State to control mounting
   const [menuInteractive, setMenuInteractive] = useState(false); // Controls if Menu can influence stars
   const [showGallery, setShowGallery] = useState(false);
+  const [showSurprise, setShowSurprise] = useState(false);
+  const [readLetterIds, setReadLetterIds] = useState<string[]>([]); // Track read letters
   const starfieldSpeedRef = useRef(0); // Shared Starfield Ref
+  const transitionOverlayRef = useRef<HTMLDivElement>(null);
+
+  // Check if all regular letters have been read
+  const isSurpriseUnlocked = letters
+    .filter((l) => l.id !== "surprise")
+    .every((l) => readLetterIds.includes(l.id));
+
+  const [introDelay, setIntroDelay] = useState<number | null>(null);
+
+  // Helper to calculate natural text duration
+  const calculateTextDuration = () => {
+      // Formula matches GSAP loop: (len * 0.08) + 1.2 + 1.0 + 0.5
+      return INTRO_TEXTS.reduce((acc, text) => {
+          return acc + (text.length * 0.08) + 2.7;
+      }, 0) + 1.5; // +1.5 for initial overlay fade out
+  };
+
+  useEffect(() => {
+     if (introDuration > 0) {
+         const textDur = calculateTextDuration();
+         // If text is longer than audio, we delay the audio start
+         const delay = Math.max(0, textDur - introDuration);
+         setIntroDelay(delay);
+     }
+  }, [introDuration]);
 
   const handleTitleScreenStart = () => {
     // 1. Mount the Menu
@@ -47,6 +96,25 @@ export default function Experience() {
     setHasSeenTitleIntro(true); // Mark intro as seen when leaving
     // Don't reset speed here, let the animation interpolate from current speed
   };
+  
+  // Callback when Intro Audio finishes
+  // Wrapped in useCallback to prevent unnecessary re-renders in MusicManager
+  const handleIntroAudioEnd = React.useCallback(() => {
+    console.log("Intro audio finished. Resuming timeline if paused.");
+    audioIntroCompleteRef.current = true;
+    if (masterTimeline.current && masterTimeline.current.paused()) {
+        masterTimeline.current.play();
+    }
+  }, []);
+
+  // Callback when loops start (for lyrics sync)
+  const handleLoopsStarted = React.useCallback(
+    (startTime: number, context: AudioContext) => {
+      setLoopsStartTime(startTime);
+      setAudioContext(context);
+    },
+    [],
+  );
 
   // Watch for menu mount to start transition
   useGSAP(() => {
@@ -65,9 +133,15 @@ export default function Experience() {
   useEffect(() => {
     if (started) return;
 
-    const handleStart = () => setStarted(true);
+    const handleStart = () => {
+      playSfx("click");
+      setStarted(true);
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Enter") setStarted(true);
+      if (e.key === "Enter") {
+        playSfx("click");
+        setStarted(true);
+      }
     };
 
     window.addEventListener("click", handleStart);
@@ -86,6 +160,10 @@ export default function Experience() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.shiftKey && (e.key === "J" || e.key === "j")) {
         if (!introComplete && masterTimeline.current) {
+          // Manually trigger states that would be skipped by progress(1)
+          setShowTitleScreen(true);
+          setShouldPlayLoops(true);
+          
           masterTimeline.current.progress(1); // Jump to end
         }
       }
@@ -96,9 +174,11 @@ export default function Experience() {
 
   useGSAP(
     () => {
+      // Don't wait for introDuration (allow default flow if 0/loading)
       if (!started) return;
 
       // Check for mobile
+
       // const isMobile = window.matchMedia("(max-width: 768px)").matches;
 
       // Desktop & Mobile: Run Intro Sequence
@@ -130,9 +210,13 @@ export default function Experience() {
         gsap.set(menuRef.current, { autoAlpha: 0 });
       }
 
-      // Phase 0: Fade out Start Overlay
+      // --- PHASE 1: Text Sequence (Synced to Audio) ---
+      // We create a nested timeline for the text sequence so we can scale it
+      const textTl = gsap.timeline();
+
+      // Fade out Start Overlay
       if (startOverlayRef.current) {
-        tl.to(startOverlayRef.current, {
+        textTl.to(startOverlayRef.current, {
           opacity: 0,
           duration: SKIP_INTRO ? 0.5 : 1.5,
           ease: "power2.inOut",
@@ -144,49 +228,67 @@ export default function Experience() {
 
       // Intro Text Sequence
       if (!SKIP_INTRO) {
-        const introTexts = [
-          "Hey, Shiori.",
-          "Do you know what day it is today?",
-          "That's right.",
-          "Today's Valentine's Day.",
-          "But also,",
-          "it is the day where an angel was summoned into this world...",
-          "the day where a best friend to many people was born.",
-          "So we made something for you.",
-          "A small place filled with words we never say out loud...",
-          "and memories you might recognise.",
-          "Take your time.",
-          "There’s something waiting for you at the end.",
-          "For now...",
-        ];
-
-        // Phase 1: Black BG, Typewriter Text
-        introTexts.forEach((text) => {
+        // Add text steps to nested timeline
+        INTRO_TEXTS.forEach((text) => {
           // Type In
-          tl.to(textEl, {
+          textTl.to(textEl, {
             text: { value: text, delimiter: "" },
             duration: text.length * 0.08, // Slow typing speed
             ease: "none",
+            onUpdate: function () {
+              // @ts-ignore - GSAP specific typing
+              const currentText = this.targets()[0].textContent;
+              // Simple heuristic: if text grew, play sound
+              // We use a small randomized condition to not play on EVERY frame if multiple frames add one char,
+              // or to skip some for less annoyance. But for typing effect, every char is usually okay.
+              // To avoid spamming, we check if length changed.
+              const prevLen = (this as any)._prevLen || 0;
+              if (currentText.length > prevLen) {
+                 // Play sound every 2 characters or so to keep it pleasant? 
+                 // Or every character but low volume (handled in SoundContext).
+                 // Let's try every character.
+                 playSfx("blip");
+                 (this as any)._prevLen = currentText.length;
+              }
+            },
+            onStart: function() {
+                (this as any)._prevLen = 0;
+            }
           });
 
           // Pause
-          tl.to({}, { duration: 1.2 });
+          textTl.to({}, { duration: 1.2 });
 
           // Fade Out (Cinematic)
-          tl.to(textEl, {
+          textTl.to(textEl, {
             opacity: 0,
             duration: 1,
             ease: "power2.in",
           });
 
           // Reset for next (Clear text, reset opacity)
-          tl.set(textEl, { text: "", opacity: 1 });
+          textTl.set(textEl, { text: "", opacity: 1 });
           // Slight pause before next
-          tl.to({}, { duration: 0.5 });
+          textTl.to({}, { duration: 0.5 });
         });
       }
+        
+      // Add nested timeline to master
+      tl.add(textTl);
+
+      // --- WAIT FOR AUDIO GATE ---
+      // If audio is LONGER than text, we pause here until audio finishes.
+      tl.call(() => {
+           if (!audioIntroCompleteRef.current) {
+               console.log("Timeline pausing for audio completion...");
+               tl.pause();
+           } else {
+               console.log("Audio already done, continuing timeline...");
+           }
+      });
 
       // Phase 2: Game-like Title Screen (Always Runs)
+
 
       // Ensure Text is gone (in case we skipped or just finished)
       tl.set(textEl, { display: "none" });
@@ -199,9 +301,13 @@ export default function Experience() {
       // Show Title Screen Component (via State)
       // This mounts the child component, triggering its internal entrance animation
       tl.call(() => setShowTitleScreen(true));
+      
+      // TRIGGER LOOPS HERE: Title screen is now active/visible
+      tl.call(() => setShouldPlayLoops(true));
 
       // Fade out Intro Black BG to reveal Stars (concurrent with Title Screen entrance)
       // Delayed by 2.5s to let "Happy Birthday" text appear on black first
+      // NOTE: This now runs ONLY after audio gate is passed (resumed)
       tl.to(
         introEl,
         { opacity: 0, duration: 2, ease: "power2.inOut" },
@@ -211,7 +317,7 @@ export default function Experience() {
       // Pause Timeline and wait for User Interaction (Start Button)
       tl.addPause();
     },
-    { scope: containerRef, dependencies: [started] },
+    { scope: containerRef, dependencies: [started, introDuration] }
   );
 
   // New Effect: Handle Transition Sequence when Menu Mounts OR Unmounts
@@ -300,11 +406,12 @@ export default function Experience() {
           tl.to(backButton, { opacity: 1, duration: 1, ease: "power2.out" });
         }
 
-        // 7. Music
+        // 7. Music (Handled by MusicManager mostly now)
+        // But we might want to ensure volume is up?
         tl.call(
           () => {
-            setBgMusicSrc("/audio/background_loop.mp3");
-            setAudioVolume(0.5);
+             // We don't set bgMusicSrc anymore for global loop
+             setAudioVolume(0.5);
           },
           undefined,
           "<",
@@ -390,6 +497,45 @@ export default function Experience() {
 
   // Handlers to manage audio ducking
   const handleLetterSelect = (id: string) => {
+    // Handle Surprise Letter
+    if (id === "surprise") {
+      if (!isSurpriseUnlocked) {
+        // Optional: Play a "locked" sound effect here
+        return;
+      }
+
+      playSfx("open");
+
+      // White Fade Out Sequence
+      if (transitionOverlayRef.current) {
+        gsap.set(transitionOverlayRef.current, {
+          display: "block",
+          opacity: 0,
+        });
+        gsap.to(transitionOverlayRef.current, {
+          opacity: 1,
+          duration: 1.0,
+          ease: "power2.inOut",
+          onComplete: () => {
+            setShowSurprise(true);
+            setMenuInteractive(false); // Disable menu interaction
+
+            // Hide the overlay shortly after SurpriseReveal mounts (z-300) to prevent it being visible when SurpriseReveal fades out later
+            gsap.delayedCall(0.1, () => {
+              if (transitionOverlayRef.current)
+                gsap.set(transitionOverlayRef.current, { autoAlpha: 0 });
+            });
+          },
+        });
+      }
+      return;
+    }
+
+    // Handle Normal Letter
+    if (!readLetterIds.includes(id)) {
+      setReadLetterIds((prev) => [...prev, id]);
+    }
+
     playSfx("open");
     setActiveLetterId(id);
     setAudioVolume(0.2); // Duck volume
@@ -423,6 +569,20 @@ export default function Experience() {
       />
 
       <Intro ref={introRef} />
+      
+      {/* Background Music Manager */}
+      <MusicManager 
+         started={started}
+         textDuration={calculateTextDuration()} // Pass duration directly
+         playLoops={shouldPlayLoops}
+         inTitleScreen={showTitleScreen} // Vocal stems active only when TitleScreen is visible (and not hidden by menu)
+         // Note: showTitleScreen is true during Menu->Title transition, so vocals fade in.
+         // When Menu is mounted, showTitleScreen becomes false at end of transition.
+         volume={audioVolume}
+         onIntroEnd={handleIntroAudioEnd}
+         onDurationLoaded={(d) => setIntroDuration(d)}
+         onLoopsStarted={handleLoopsStarted}
+      />
 
       {/* Title Screen Layer - Persistent Wrapper */}
       <div
@@ -438,6 +598,8 @@ export default function Experience() {
               setHasSeenTitleIntro(true); // Also set if they go to gallery first
             }}
             skipIntro={hasSeenTitleIntro}
+            loopsStartTime={loopsStartTime}
+            audioContext={audioContext}
           />
         )}
       </div>
@@ -446,6 +608,8 @@ export default function Experience() {
         ref={menuRef}
         letters={letters}
         visible={introComplete}
+        readLetterIds={readLetterIds}
+        isSurpriseUnlocked={isSurpriseUnlocked}
         onLetterSelect={handleLetterSelect}
         onGalleryOpen={() => setShowGallery(true)}
         onBack={() => {
@@ -466,10 +630,32 @@ export default function Experience() {
 
       {showGallery && <GlobeGallery onClose={() => setShowGallery(false)} />}
 
-      <AudioControl
-        src={activeLetter ? `/audio/${activeLetter.id}.mp3` : bgMusicSrc}
-        targetVolume={audioVolume}
+      {/* AudioControl ONLY for Letter Voiceovers (if any) or extra SFX, NOT BGM */}
+      {activeLetter && (
+          <AudioControl
+            src={`/audio/${activeLetter.id}.mp3`}
+            targetVolume={audioVolume}
+          />
+      )}
+
+      <div
+        ref={transitionOverlayRef}
+        className="fixed inset-0 z-[200] bg-white pointer-events-none opacity-0 hidden"
       />
+
+      {showSurprise && (
+        <SurpriseReveal
+          letter={letters.find((l) => l.id === "surprise")!}
+          onComplete={() => {
+            setShowSurprise(false);
+            setMenuInteractive(true); // Re-enable menu interaction
+            gsap.set(transitionOverlayRef.current, {
+              display: "none",
+              opacity: 0,
+            });
+          }}
+        />
+      )}
     </main>
   );
 }

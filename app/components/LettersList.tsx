@@ -1,5 +1,6 @@
 import React, { forwardRef, useLayoutEffect, useRef, useEffect } from "react";
 import { LetterData } from "../data/letters";
+import gsap from "gsap";
 
 interface LettersListProps {
   letters: LetterData[];
@@ -9,7 +10,122 @@ interface LettersListProps {
   visible: boolean;
   starfieldSpeedRef: React.RefObject<number>;
   controlsStarfield?: boolean;
+  readLetterIds?: string[];
+  isSurpriseUnlocked?: boolean;
 }
+
+const Envelope = ({
+  letter,
+  index,
+  isLast,
+  isRead,
+  isLocked,
+  onClick,
+}: {
+  letter: LetterData;
+  index: number;
+  isLast: boolean;
+  isRead?: boolean;
+  isLocked?: boolean;
+  onClick: () => void;
+}) => {
+  return (
+    <button
+      onClick={onClick}
+      disabled={isLocked}
+      className={`group relative flex flex-col items-center justify-center p-6 transition-all duration-500 focus:outline-none w-full ${
+        isLast
+          ? "aspect-[2/1] md:aspect-[3/1]"
+          : "aspect-square"
+      } ${isLocked ? "opacity-50 cursor-not-allowed grayscale" : "hover:scale-105"}`}
+    >
+      {/* Glassy Background Card */}
+      <div
+        className={`absolute inset-0 backdrop-blur-sm border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)] ${
+          isLocked
+            ? "bg-slate-900/20 border-white/5"
+            : "bg-slate-900/40 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]"
+        } ${isRead && !isLast ? "border-white/5 bg-slate-900/20" : ""}`}
+      ></div>
+
+      {/* Envelope Icon (SVG) */}
+      <div
+        className={`relative z-10 w-full h-full flex items-center justify-center transition-colors duration-500 ${
+          isLocked
+            ? "text-gray-600"
+            : "text-white/80 group-hover:text-white"
+        } ${isRead && !isLast ? "text-gray-500" : ""}`}
+      >
+        {isLocked ? (
+          // Lock Icon
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="w-1/3 h-1/3"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            />
+          </svg>
+        ) : (
+          // Simple Geometric Envelope
+          <svg
+            viewBox="0 0 100 70"
+            className={`w-2/3 h-2/3 drop-shadow-lg transition-transform duration-700 ${
+              isLast ? "group-hover:scale-110" : "group-hover:-translate-y-2"
+            } ${isRead && !isLast ? "opacity-50" : ""}`}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            {/* Base Rectangle */}
+            <path d="M5 5h90v60H5z" className="fill-black/20" />
+            {/* Flap (Closed) */}
+            <path
+              d="M5 5l45 35 45-35"
+              className={`transition-all duration-700 ${
+                isRead ? "origin-top -scale-y-100 translate-y-[-10px]" : ""
+              }`}
+            />
+            {/* Bottom folds */}
+            <path d="M5 65l40-30 M95 65l-40-30" />
+          </svg>
+        )}
+
+        {/* Surprise Letter specific decoration */}
+        {isLast && !isLocked && (
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-full h-full absolute bg-linear-to-r from-transparent via-white/5 to-transparent animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+          </div>
+        )}
+      </div>
+
+      {/* Nickname Label */}
+      <div className="absolute bottom-4 left-0 right-0 text-center z-20">
+        <span
+          className={`font-serif tracking-widest uppercase text-xs md:text-sm transition-colors duration-300 ${
+            isLast
+              ? "text-base md:text-lg font-bold"
+              : ""
+          } ${
+            isLocked
+              ? "text-gray-700"
+              : "text-gray-400 group-hover:text-white"
+          } ${isRead && !isLast ? "text-gray-600" : ""}`}
+        >
+          {isLocked ? "LOCKED" : letter.nickname}
+        </span>
+      </div>
+    </button>
+  );
+};
 
 const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
   (
@@ -21,160 +137,49 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
       visible,
       starfieldSpeedRef,
       controlsStarfield = false,
+      readLetterIds = [],
+      isSurpriseUnlocked = false,
     },
-    ref,
+    ref
   ) => {
     const scrollContainerRef = useRef<HTMLElement>(null);
-    const itemsRef = useRef<(HTMLButtonElement | null)[]>([]);
     const lastScrollTopRef = useRef(0);
-
     const rAFRef = useRef<number | null>(null);
 
-    // Use useLayoutEffect to ensure styles are applied before browser paint
-    // and before parent animations might read them (if delayed correctly).
+    // Starfield Velocity Logic
     useLayoutEffect(() => {
-      const updateItems = () => {
+      const updatePhysics = () => {
         if (!scrollContainerRef.current) return;
 
         const container = scrollContainerRef.current;
         const currentScrollTop = container.scrollTop;
-
-        // Calculate velocity
         const velocity = currentScrollTop - lastScrollTopRef.current;
         lastScrollTopRef.current = currentScrollTop;
 
-        // Update starfield speed (Global ref) - ONLY if allowed
         if (starfieldSpeedRef && controlsStarfield) {
-          starfieldSpeedRef.current = velocity;
+          // Amplify velocity slightly for effect
+          starfieldSpeedRef.current = velocity * 5;
         }
-
-        const containerHeight = container.clientHeight;
-        const containerCenter = container.scrollTop + containerHeight / 2;
-        const maxDist = containerHeight / 2;
-
-        itemsRef.current.forEach((item) => {
-          if (!item) return;
-
-          // Use offsetTop for layout-based position (ignoring GSAP transforms)
-          // Since nav is relative, offsetTop is relative to the scroll container (mostly)
-          // We need to handle potential nesting if wrappers interfere, but usually fine.
-
-          // Note: item.offsetTop includes the container's padding-top if the item is a direct child
-          // or if standard flow.
-
-          // We need to account for the wrapper 'div' if 'item' is the button inside.
-          // button.offsetTop is relative to its offsetParent.
-          // If wrapper isn't positioned, offsetParent is nav.
-
-          let itemTop = item.offsetTop;
-          let parent = item.offsetParent as HTMLElement;
-
-          // Ensure we calculate relative to the container
-          while (parent && parent !== container) {
-            itemTop += parent.offsetTop;
-            parent = parent.offsetParent as HTMLElement;
-          }
-
-          const itemCenter = itemTop + item.offsetHeight / 2;
-
-          const distance = Math.abs(containerCenter - itemCenter);
-          const normalizedDist = Math.min(distance / maxDist, 1);
-
-          // Calculate styles - SCALING DOWN from natural size (1.0)
-          // Center = 1.0, Edges = 0.5
-          const scale = 1.0 - normalizedDist * 0.5;
-          const opacity = 1 - normalizedDist * 0.7;
-          const blur = normalizedDist * 3;
-
-          // Use transform3d for hardware acceleration
-          item.style.transform = `scale(${scale}) translateZ(0)`;
-          item.style.opacity = `${opacity}`;
-          item.style.filter = `blur(${blur}px)`;
-          item.style.zIndex = `${Math.round((1 - normalizedDist) * 100)}`;
-        });
 
         rAFRef.current = null;
       };
 
       const handleScroll = () => {
         if (!rAFRef.current) {
-          rAFRef.current = requestAnimationFrame(updateItems);
+          rAFRef.current = requestAnimationFrame(updatePhysics);
         }
       };
 
       const container = scrollContainerRef.current;
       if (container) {
         container.addEventListener("scroll", handleScroll, { passive: true });
-        window.addEventListener("resize", handleScroll);
-        // Initial calculation
-        updateItems(); // Call directly to force sync update on mount
       }
 
       return () => {
         if (container) container.removeEventListener("scroll", handleScroll);
-        window.removeEventListener("resize", handleScroll);
         if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
       };
-    }, [visible, controlsStarfield, starfieldSpeedRef]); // Recalculate when visibility changes
-
-    // Keyboard Navigation for Menu
-    useEffect(() => {
-      if (!visible) return;
-
-      const handleKeyDown = (e: KeyboardEvent) => {
-        const container = scrollContainerRef.current;
-        if (!container) return;
-
-        // Find currently centered item index
-        const containerCenter =
-          container.scrollTop + container.clientHeight / 2;
-        let closestIndex = 0;
-        let minDistance = Infinity;
-
-        itemsRef.current.forEach((item, index) => {
-          if (!item) return;
-
-          let itemTop = item.offsetTop;
-          let parent = item.offsetParent as HTMLElement;
-          while (parent && parent !== container) {
-            itemTop += parent.offsetTop;
-            parent = parent.offsetParent as HTMLElement;
-          }
-
-          const itemCenter = itemTop + item.offsetHeight / 2;
-          const dist = Math.abs(containerCenter - itemCenter);
-          if (dist < minDistance) {
-            minDistance = dist;
-            closestIndex = index;
-          }
-        });
-
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          const nextIndex = Math.min(letters.length - 1, closestIndex + 1);
-          const targetItem = itemsRef.current[nextIndex];
-          if (targetItem) {
-            targetItem.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-        } else if (e.key === "ArrowUp") {
-          e.preventDefault();
-          const prevIndex = Math.max(0, closestIndex - 1);
-          const targetItem = itemsRef.current[prevIndex];
-          if (targetItem) {
-            targetItem.scrollIntoView({ behavior: "smooth", block: "center" });
-          }
-        } else if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          const targetItem = itemsRef.current[closestIndex];
-          if (targetItem) {
-            onLetterSelect(letters[closestIndex].id);
-          }
-        }
-      };
-
-      window.addEventListener("keydown", handleKeyDown);
-      return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [visible, letters, onLetterSelect]);
+    }, [controlsStarfield, starfieldSpeedRef]);
 
     return (
       <div
@@ -214,11 +219,6 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
                 </svg>
               </div>
             </div>
-
-            {/* Instruction Text */}
-            {/*<div className="instruction-text text-gray-500 text-xs tracking-[0.2em] font-light uppercase animate-pulse mb-2">
-              Choose a letter to read
-            </div>*/}
           </header>
 
           {/* Back Button - Fixed Top Left */}
@@ -248,76 +248,51 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
           </button>
         </div>
 
-        {/* Scrollable List Container (Full Screen Centered) */}
+        {/* Scrollable Grid Container */}
         <div className="absolute inset-0 z-10 flex justify-center overflow-hidden pointer-events-auto">
-          <div className="relative w-full max-w-lg h-full">
+          <div className="relative w-full max-w-4xl h-full">
             {/* Top Fade Mask */}
-            <div className="absolute top-0 left-0 right-0 h-48 bg-linear-to-b from-black via-black/80 to-transparent z-20 pointer-events-none" />
+            <div className="absolute top-0 left-0 right-0 h-32 bg-linear-to-b from-black via-black/80 to-transparent z-20 pointer-events-none" />
 
             {/* Scrollable Area */}
             <nav
               ref={scrollContainerRef}
-              className="relative h-full overflow-y-auto no-scrollbar py-[45vh] px-4 flex flex-col items-center gap-8 snap-y snap-mandatory touch-pan-y"
+              className="relative h-full overflow-y-auto no-scrollbar pt-40 pb-32 px-6"
             >
-              {letters.map((letter, index) => (
-                <div
-                  key={letter.id}
-                  className="menu-item-wrapper w-full flex justify-center snap-center"
-                >
-                  <button
-                    ref={(el) => {
-                      itemsRef.current[index] = el;
-                    }}
-                    onClick={() => onLetterSelect(letter.id)}
-                    className="menu-item group relative text-4xl md:text-5xl font-serif font-semibold tracking-wide cursor-pointer focus:outline-none py-2 will-change-transform"
-                    aria-label={`Read letter from ${letter.nickname}`}
-                  >
-                    <span className="relative z-10 text-white">
-                      {letter.nickname.toLowerCase()}
-                    </span>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                {letters.map((letter, index) => {
+                  const isLast = index === letters.length - 1;
+                  const isRead = readLetterIds.includes(letter.id);
+                  const isLocked = isLast && !isSurpriseUnlocked;
 
-                    {/* Simplified hover effect since scale is driven by scroll */}
-                    <div className="absolute inset-x-0 bottom-0 h-px bg-white transform scale-x-0 transition-transform duration-300 group-hover:scale-x-100 opacity-50" />
-                  </button>
-                </div>
-              ))}
+                  return (
+                    <div
+                      key={letter.id}
+                      className={`menu-item-wrapper ${
+                        isLast ? "col-span-2 md:col-span-3" : "col-span-1"
+                      }`}
+                    >
+                      <Envelope
+                        letter={letter}
+                        index={index}
+                        isLast={isLast}
+                        isRead={isRead}
+                        isLocked={isLocked}
+                        onClick={() => onLetterSelect(letter.id)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
             </nav>
 
             {/* Bottom Fade Mask */}
             <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-black via-black/80 to-transparent z-20 pointer-events-none" />
           </div>
         </div>
-
-        {/* Gallery Button - Fixed Bottom */}
-        {/*<div className="absolute bottom-12 left-0 right-0 z-50 flex justify-center pointer-events-auto">
-          <button
-            onClick={onGalleryOpen}
-            className="group flex flex-col items-center gap-2 text-gray-400 hover:text-white transition-colors duration-300"
-          >
-            <div className="p-2 border border-gray-600 rounded-full group-hover:border-white group-hover:bg-white/10 transition-all duration-300">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <span className="text-[10px] uppercase tracking-[0.2em]">
-              View World Gallery
-            </span>
-          </button>
-        </div>*/}
       </div>
     );
-  },
+  }
 );
 
 LettersList.displayName = "MainMenu";

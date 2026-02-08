@@ -3,7 +3,7 @@ import gsap from "gsap";
 
 interface AudioControlProps {
   src: string;
-  targetVolume: number; // 0 to 1
+  targetVolume: number;
 }
 
 const AudioControl = ({ src, targetVolume }: AudioControlProps) => {
