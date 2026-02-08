@@ -336,7 +336,6 @@ export default function Experience() {
             duration: text.length * 0.08, // Slow typing speed
             ease: "none",
             onUpdate: function () {
-              // @ts-ignore - GSAP specific typing
               const currentText = this.targets()[0].textContent;
               // Simple heuristic: if text grew, play sound
               const prevLen = this._prevLen || 0;

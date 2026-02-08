@@ -18,14 +18,15 @@ export const letters: LetterData[] = [
     ],
   },
   {
-    id: "stargazer",
-    nickname: "Stargazer",
-    imageSrc: "/images/stargazer.svg",
+    id: "ella",
+    nickname: "Ella",
+    imageSrc: "/images/pfp/ella.png",
     content: [
-      "Hey you,",
-      "Remember that night we spent looking for the northern lights? Even though we missed them, the waiting was the best part.",
-      "You have this gravity about you that pulls people in and keeps them in orbit. Don't ever lose that light.",
-      "Keep shining.",
+      "Dear Halo,",
+      "Uhh we haven't known each other long at all, I'd say I barely know you at all, but hey that can change in the future for sure!",
+      "You're 19 now huh, your gonna be out of education soon I guess, good luck on your studies and whatever you want to achieve.",
+      "Also stop thinking so negatively about yourself, I still believe you'll find a partner that genuinely cares about you.",
+      "So good luck with everything, and many many returns of the day.",
     ],
   },
   {
