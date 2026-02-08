@@ -287,7 +287,7 @@ export default function Experience() {
                     0,
                     Math.ceil(backspaceObj.len),
                   );
-                  // playSfx("blip_alt");
+                  playSfx("blip_alt");
                 }
               },
             });
@@ -583,7 +583,7 @@ export default function Experience() {
 
         // Cleanup Menu
         tl.set(menuRef.current, { autoAlpha: 0 });
-        
+
         // Ensure volume matches
         tl.call(() => setAudioVolume(0.5));
       }
