@@ -172,6 +172,11 @@ export default function MusicManager({
       srcIntro.start(introStartTime);
       sourceIntroRef.current = srcIntro;
 
+      // Use onended for reliable completion handling (works in background tabs)
+      srcIntro.onended = () => {
+        onIntroEnd();
+      };
+
       // Fade In Intro (Covering the entire intro duration)
       // We use GSAP for a smoother, cinematic build-up that spans the whole intro.
       const startDelay = introStartTime - now;
@@ -216,11 +221,11 @@ export default function MusicManager({
 
       // Notify parent when intro is theoretically done
       // (This is redundant if parent syncs via duration, but good for safety)
-      const timeToIntroEnd = (loopsStartTime - now) * 1000;
+      // const timeToIntroEnd = (loopsStartTime - now) * 1000;
 
-      introTimeoutRef.current = setTimeout(() => {
-        onIntroEnd();
-      }, timeToIntroEnd);
+      // introTimeoutRef.current = setTimeout(() => {
+      //   onIntroEnd();
+      // }, timeToIntroEnd);
     }
   }, [
     started,

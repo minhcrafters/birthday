@@ -18,6 +18,9 @@ import LetterView from "./LetterView";
 
 gsap.registerPlugin(useGSAP, TextPlugin);
 
+// Disable lag smoothing to prevent animations from pausing/desyncing when tab is backgrounded
+gsap.ticker.lagSmoothing(0);
+
 const SKIP_INTRO = false;
 
 const INTRO_TEXTS = [
