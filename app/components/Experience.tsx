@@ -80,7 +80,21 @@ export default function Experience() {
     // Formula matches GSAP loop: (len * 0.08) + 1.2 + 1.0 + 0.5
     return (
       INTRO_TEXTS.reduce((acc, text) => {
-        return acc + text.length * 0.08 + 2.7;
+        let duration = text.length * 0.08 + 2.7;
+
+        // Add extra time for the special backspace animation on this specific line
+        if (text === "Today's Valentine's Day.") {
+          // Extra time breakdown:
+          // + 0.6 (Short pause)
+          // + 0.8 (Backspace 16 chars * 0.05)
+          // + 1.12 (Type "your birthday." 14 chars * 0.08)
+          // - 1.2 (Removed original long pause, replaced by short pause + anim)
+          // Actually, let's just calculate the full specific duration to be safe:
+          // 1.92 (Type old) + 0.6 (Pause) + 0.8 (Back) + 1.12 (Type new) + 2.7 (End seq) = 7.14s
+          duration = 7.14;
+        }
+
+        return acc + duration;
       }, 0) + 1.5
     ); // +1.5 for initial overlay fade out
   };
@@ -273,7 +287,7 @@ export default function Experience() {
                     0,
                     Math.ceil(backspaceObj.len),
                   );
-                  playSfx("blip_alt");
+                  // playSfx("blip_alt");
                 }
               },
             });
@@ -569,6 +583,9 @@ export default function Experience() {
 
         // Cleanup Menu
         tl.set(menuRef.current, { autoAlpha: 0 });
+        
+        // Ensure volume matches
+        tl.call(() => setAudioVolume(0.5));
       }
     },
     { scope: containerRef, dependencies: [menuMounted] },
