@@ -63,7 +63,7 @@ export default function ImageView({ image, onClose }: ImageViewProps) {
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-80 flex items-center justify-center bg-black/98 backdrop-blur-xl"
+      className="fixed inset-0 z-80 flex items-center justify-center bg-black/98 backdrop-blur-xl pointer-events-auto"
       onClick={handleClose}
     >
       <div className="absolute top-6 right-6 md:top-8 md:right-8 text-white/50 hover:text-white cursor-pointer z-50 p-4 border border-transparent hover:border-white/30 transition-all duration-300 group">
@@ -93,19 +93,23 @@ export default function ImageView({ image, onClose }: ImageViewProps) {
         <div className="relative border border-white/10 bg-neutral-900 p-1 md:p-2 shadow-2xl">
           <img
             src={image.src}
-            alt={`Full size by ${image.author}`}
+            alt={
+              image.author ? `Full size by ${image.author}` : "Gallery image"
+            }
             className="max-w-full max-h-[75vh] object-contain"
           />
         </div>
 
-        <div className="text-center space-y-2">
-          <p className="text-gray-500 text-[10px] tracking-[0.3em] uppercase font-mono border-b border-gray-800 pb-2 inline-block">
-            Captured by
-          </p>
-          <p className="text-white text-2xl md:text-3xl font-serif font-bold tracking-widest uppercase">
-            {image.author}
-          </p>
-        </div>
+        {image.author && (
+          <div className="text-center space-y-2">
+            <p className="text-gray-500 text-[10px] tracking-[0.3em] uppercase font-mono border-b border-gray-800 pb-2 inline-block">
+              By
+            </p>
+            <p className="text-white text-2xl md:text-3xl font-serif font-bold tracking-widest uppercase">
+              {image.author}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

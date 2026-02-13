@@ -3,8 +3,9 @@
 import AudioControl from "./AudioControl";
 import MusicManager from "./MusicManager";
 import { letters } from "../data/letters";
-import Starfield from "./Starfield";
-import GlobeGallery from "./GlobeGallery";
+import Starfield, { STARFIELD_OPACITY } from "./Starfield";
+import Gallery from "./Gallery";
+import Credits from "./Credits";
 import SurpriseReveal from "./SurpriseReveal";
 import { useSound } from "../contexts/SoundContext";
 import React, { useRef, useState, useEffect } from "react";
@@ -15,6 +16,7 @@ import Intro from "./Intro";
 import TitleScreen from "./TitleScreen";
 import LettersList from "./LettersList";
 import LetterView from "./LetterView";
+import { GalleryImage } from "../data/galleryData";
 
 gsap.registerPlugin(useGSAP, TextPlugin);
 
@@ -38,7 +40,11 @@ const INTRO_TEXTS = [
   "For now...",
 ];
 
-export default function Experience() {
+interface ExperienceProps {
+  galleryImages: GalleryImage[];
+}
+
+export default function Experience({ galleryImages }: ExperienceProps) {
   const { playSfx } = useSound();
   const [started, setStarted] = useState(false);
   const [introComplete, setIntroComplete] = useState(false);
@@ -63,6 +69,7 @@ export default function Experience() {
   const [menuMounted, setMenuMounted] = useState(false); // New State to control mounting
   const [menuInteractive, setMenuInteractive] = useState(false); // Controls if Menu can influence stars
   const [showGallery, setShowGallery] = useState(false);
+  const [showCredits, setShowCredits] = useState(false);
   const [showSurprise, setShowSurprise] = useState(false);
   const [readLetterIds, setReadLetterIds] = useState<string[]>([]); // Track read letters
   const starfieldSpeedRef = useRef(0); // Shared Starfield Ref
@@ -412,6 +419,102 @@ export default function Experience() {
     { scope: containerRef, dependencies: [started, introDuration] },
   );
 
+  useGSAP(
+    () => {
+      // Don't run this if we are interacting with the menu
+      if (menuMounted) return;
+
+      if (!titleScreenWrapperRef.current) return;
+
+      const tl = gsap.timeline();
+
+      if (showGallery) {
+        // --- FORWARD: Title -> Gallery ---
+
+        // 1. Fade Out Title Screen
+        tl.to(titleScreenWrapperRef.current, {
+          opacity: 0,
+          duration: 0.8,
+          ease: "power2.inOut",
+        });
+
+        // 2. Warp Starfield (Accelerate)
+        const speedProxy = { val: starfieldSpeedRef.current || 0 };
+        tl.call(() => playSfx("warp"));
+
+        tl.to(
+          speedProxy,
+          {
+            val: 180, // High speed
+            duration: 1.0,
+            ease: "power3.in",
+            onUpdate: () => {
+              starfieldSpeedRef.current = speedProxy.val;
+            },
+          },
+          "<",
+        );
+
+        // 3. Decelerate (Arrive at Gallery)
+        tl.to(speedProxy, {
+          val: 0, // Stop for gallery
+          duration: 1.5,
+          ease: "power3.out",
+          onUpdate: () => {
+            starfieldSpeedRef.current = speedProxy.val;
+          },
+        });
+
+        // 4. Cleanup Title Screen & Stop Vocals
+        // Triggered after fade out is visually complete
+        tl.call(() => setShowTitleScreen(false));
+        tl.set(titleScreenWrapperRef.current, { display: "none" });
+      } else if (hasSeenTitleIntro && !showGallery && !menuMounted) {
+        // --- BACKWARD: Gallery -> Title ---
+        // (Only if we've seen intro, are not in gallery, and not in menu)
+
+        // 1. Prepare Title Screen
+        tl.call(() => setShowTitleScreen(true));
+        tl.set(titleScreenWrapperRef.current, { display: "block", opacity: 0 });
+
+        // 2. Reverse Warp
+        const speedProxy = { val: starfieldSpeedRef.current || 0 };
+        tl.call(() => playSfx("warp"));
+
+        tl.to(speedProxy, {
+          val: -150, // Reverse speed
+          duration: 0.8,
+          ease: "expo.in",
+          onUpdate: () => {
+            starfieldSpeedRef.current = speedProxy.val;
+          },
+        });
+
+        // 3. Fade In Title Screen
+        tl.to(titleScreenWrapperRef.current, {
+          opacity: 1,
+          duration: 1.0,
+          ease: "power2.out",
+        });
+
+        // 4. Brake to stop
+        tl.to(
+          speedProxy,
+          {
+            val: 0,
+            duration: 1.5,
+            ease: "power3.out",
+            onUpdate: () => {
+              starfieldSpeedRef.current = speedProxy.val;
+            },
+          },
+          "<",
+        );
+      }
+    },
+    { scope: containerRef, dependencies: [showGallery] },
+  );
+
   // New Effect: Handle Transition Sequence when Menu Mounts OR Unmounts
   useGSAP(
     () => {
@@ -422,7 +525,6 @@ export default function Experience() {
       if (menuMounted) {
         // --- FORWARD: Title -> Menu ---
         // 1. Prepare Main Menu
-        gsap.set(menuRef.current, { autoAlpha: 1 });
         gsap.set(introRef.current, { autoAlpha: 0, display: "none" });
 
         // 2. Fade Out Title Screen (Foreground)
@@ -463,6 +565,7 @@ export default function Experience() {
         const menuItemWrappers =
           menuRef.current.querySelectorAll(".menu-item-wrapper");
         const headerContent = menuRef.current.querySelectorAll("header > *");
+        const fadeMasks = menuRef.current.querySelectorAll(".fade-mask");
         // const instructionText =
         //   menuRef.current.querySelector(".instruction-text");
 
@@ -474,6 +577,9 @@ export default function Experience() {
 
         // FIX: Reset properties to resting state so .from() works correctly on re-entry
         gsap.set(allMenuContent, { y: 0, opacity: 1 });
+        gsap.set(fadeMasks, { opacity: 1 });
+
+        tl.set(menuRef.current, { autoAlpha: 1 }, "<");
 
         tl.from(
           allMenuContent,
@@ -485,6 +591,16 @@ export default function Experience() {
             stagger: 0.1,
           },
           "<", // Starts exactly when deceleration starts
+        );
+
+        tl.from(
+          fadeMasks,
+          {
+            opacity: 0,
+            duration: 1.5,
+            ease: "power2.inOut",
+          },
+          "<",
         );
 
         // 6. Cleanup
@@ -529,6 +645,7 @@ export default function Experience() {
         const menuItemWrappers =
           menuRef.current.querySelectorAll(".menu-item-wrapper");
         const headerContent = menuRef.current.querySelectorAll("header > *");
+        const fadeMasks = menuRef.current.querySelectorAll(".fade-mask");
         const allMenuContent = [
           ...Array.from(headerContent),
           ...Array.from(menuItemWrappers),
@@ -541,6 +658,16 @@ export default function Experience() {
           ease: "power2.in",
           stagger: { amount: 0.2, from: "end" },
         });
+
+        tl.to(
+          fadeMasks,
+          {
+            opacity: 0,
+            duration: 0.8,
+            ease: "power2.inOut",
+          },
+          "<",
+        );
 
         // Reverse Warp
         const speedProxy = { val: starfieldSpeedRef.current || 0 };
@@ -632,16 +759,16 @@ export default function Experience() {
     }
 
     // Handle Normal Letter
-    if (!readLetterIds.includes(id)) {
-      setReadLetterIds((prev) => [...prev, id]);
-    }
-
     playSfx("open");
     setActiveLetterId(id);
     setAudioVolume(0.2); // Duck volume
   };
 
   const handleLetterDismiss = () => {
+    if (activeLetterId && !readLetterIds.includes(activeLetterId)) {
+      setReadLetterIds((prev) => [...prev, activeLetterId]);
+    }
+
     playSfx("close");
     setActiveLetterId(null);
     setAudioVolume(0.5); // Restore volume
@@ -650,15 +777,15 @@ export default function Experience() {
   return (
     <main
       ref={containerRef}
-      className="relative w-full h-screen overflow-hidden bg-black text-white selection:bg-white selection:text-black"
+      className="relative w-full h-screen overflow-hidden bg-bg-deep text-text-bright selection:bg-text-bright selection:text-bg-deep"
     >
       <div
         ref={startOverlayRef}
-        className={`fixed inset-0 z-100 flex items-center justify-center bg-black cursor-pointer ${
+        className={`fixed inset-0 z-100 flex items-center justify-center bg-bg-deep cursor-pointer ${
           started ? "pointer-events-none" : ""
         }`}
       >
-        <div className="mt-12 text-xs uppercase tracking-[0.2em] text-gray-400 animate-pulse">
+        <div className="mt-12 text-xs uppercase tracking-[0.2em] text-text-muted animate-pulse">
           click or press enter to start -&gt;
         </div>
       </div>
@@ -666,6 +793,12 @@ export default function Experience() {
       <Starfield
         speedRef={starfieldSpeedRef}
         enableFriction={menuInteractive}
+        bgImage={
+          menuMounted
+            ? "/images/bg/hbp_thumbnail_3.png"
+            : "/images/bg/hbp_thumbnail_1.png"
+        }
+        opacity={STARFIELD_OPACITY}
       />
 
       <Intro ref={introRef} />
@@ -698,6 +831,7 @@ export default function Experience() {
               setShowGallery(true);
               setHasSeenTitleIntro(true); // Also set if they go to gallery first
             }}
+            onCreditsOpen={() => setShowCredits(true)}
             skipIntro={hasSeenTitleIntro}
             loopsStartTime={loopsStartTime}
             audioContext={audioContext}
@@ -729,7 +863,11 @@ export default function Experience() {
         }}
       />
 
-      {showGallery && <GlobeGallery onClose={() => setShowGallery(false)} />}
+      {showGallery && (
+        <Gallery images={galleryImages} onClose={() => setShowGallery(false)} />
+      )}
+
+      {showCredits && <Credits onClose={() => setShowCredits(false)} />}
 
       {/* AudioControl ONLY for Letter Voiceovers (if any) or extra SFX, NOT BGM */}
       {activeLetter && (

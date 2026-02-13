@@ -1,4 +1,5 @@
 import React, { forwardRef, useLayoutEffect, useRef, useEffect } from "react";
+import Image from "next/image";
 import { LetterData } from "../data/letters";
 import gsap from "gsap";
 
@@ -35,14 +36,14 @@ const Envelope = ({
       disabled={isLocked}
       className={`group relative flex flex-col items-center justify-center p-6 transition-all duration-500 focus:outline-none w-full ${
         isLast ? "aspect-2/1 md:aspect-3/1" : "aspect-square"
-      } ${isLocked ? "opacity-50 cursor-not-allowed grayscale" : "hover:scale-105"}`}
+      } ${isLocked ? "opacity-60 cursor-not-allowed grayscale" : "hover:scale-105"}`}
     >
       {/* Glassy Background Card */}
       <div
-        className={`absolute inset-0 backdrop-blur-sm border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)] ${
+        className={`absolute inset-0 border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)] ${
           isLocked
             ? "bg-slate-900/20 border-white/5"
-            : "bg-slate-900/40 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]"
+            : "bg-slate-900/50 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]"
         } ${isRead && !isLast ? "border-white/5 bg-slate-900/20" : ""}`}
       ></div>
 
@@ -69,30 +70,18 @@ const Envelope = ({
             />
           </svg>
         ) : (
-          // Simple Geometric Envelope
-          <svg
-            viewBox="0 0 100 70"
-            className={`w-2/3 h-2/3 drop-shadow-lg transition-transform duration-700 overflow-visible ${
+          // Image Envelope
+          <Image
+            src={`/images/icons/letter_${isLast ? "purple" : "blue"}_${
+              isRead ? "open" : "closed"
+            }.png`}
+            alt="Envelope"
+            width={800}
+            height={600}
+            className={`w-3/4 h-3/4 object-contain drop-shadow-lg transition-transform duration-700 ${
               isLast ? "group-hover:scale-110" : "group-hover:-translate-y-2"
-            } ${isRead && !isLast ? "opacity-50" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            {/* Base Rectangle */}
-            <path d="M5 5h90v60H5z" className="fill-black/20" />
-            {/* Flap (Closed) */}
-            <path
-              d="M5 5l45 35 45-35"
-              className={`transition-all duration-700 ${
-                isRead ? "origin-top -scale-y-100 translate-y-2.5" : ""
-              }`}
-            />
-            {/* Bottom folds */}
-            <path d="M5 65l40-30 M95 65l-40-30" />
-          </svg>
+            } ${isRead && !isLast ? "opacity-75" : ""}`}
+          />
         )}
 
         {/* Surprise Letter specific decoration */}
@@ -180,7 +169,7 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
       >
         {/* Header & Instructions Layer (Fixed Top) */}
         <div className="absolute top-0 left-0 right-0 z-50 flex flex-col items-center pointer-events-none">
-          <header className="w-full pt-12 pb-4 flex flex-col items-center gap-4 bg-linear-to-b from-black via-black/80 to-transparent">
+          <header className="w-full pt-12 pb-4 flex flex-col items-center gap-4">
             {/* Month Name */}
             <div className="text-xs tracking-[0.3em] font-light text-gray-400 uppercase">
               February
@@ -244,7 +233,7 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
         <div className="absolute inset-0 z-10 flex justify-center overflow-hidden pointer-events-auto">
           <div className="relative w-full max-w-4xl h-full">
             {/* Top Fade Mask */}
-            <div className="absolute top-0 left-0 right-0 h-32 bg-linear-to-b from-black via-black/80 to-transparent z-20 pointer-events-none" />
+            <div className="absolute top-0 left-0 right-0 h-32 bg-linear-to-b from-black via-black/80 to-transparent z-20 pointer-events-none fade-mask" />
 
             {/* Scrollable Area */}
             <nav
@@ -279,7 +268,7 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
             </nav>
 
             {/* Bottom Fade Mask */}
-            <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-black via-black/80 to-transparent z-20 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-black via-black/80 to-transparent z-20 pointer-events-none fade-mask" />
           </div>
         </div>
       </div>

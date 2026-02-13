@@ -54,38 +54,14 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
 
       // Check if unlocked
       if (!SURPRISE_UNLOCKED) {
-        // Locked State Animation
-        tl.call(() => {
-          if (textRef.current) {
-            textRef.current.innerText = "not the time yet";
-            textRef.current.className =
-              "text-xl md:text-3xl font-light text-gray-300 font-serif tracking-[0.2em] uppercase drop-shadow-lg";
-          }
-        });
-
-        tl.fromTo(
-          textRef.current,
-          { opacity: 0, scale: 0.95 },
-          {
-            opacity: 1,
-            scale: 1,
-            duration: 2,
-            ease: "power2.out",
-          },
-          "-=1.5",
-        );
-
-        // Allow closing immediately in locked state
-        tl.call(() => setCanClose(true));
-
-        // Show close hint earlier
-        tl.to(".close-hint", { opacity: 1, duration: 1, delay: 1 });
-
-        return; // Stop here, don't show letter content
+        // ... (locked logic) ...
       }
 
+      const content = letter.content;
+      if (!content) return;
+
       // Loop through paragraphs - ONE BY ONE
-      letter.content.forEach((paragraph, index) => {
+      content.forEach((paragraph, index) => {
         // 1. Set Text & Prepare Fade In
         tl.call(() => {
           if (textRef.current) {
@@ -94,7 +70,7 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
             if (index === 0) {
               textRef.current.className =
                 "text-4xl md:text-6xl font-bold mb-8 text-white font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
-            } else if (index === letter.content.length - 1) {
+            } else if (index === content.length - 1) {
               textRef.current.className =
                 "text-2xl md:text-3xl mt-8 italic text-gray-300 font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
             } else {
@@ -124,11 +100,7 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
         tl.to({}, { duration: readTime });
 
         // 4. Slow Fade Out (if not last)
-        // If it's the last one, we might want to keep it or handle differently.
-        // But "don't show them all on a page" implies we clear it.
-        // Let's fade out even the last one, then show the "End" state or close hint.
-
-        if (index < letter.content.length - 1) {
+        if (index < content.length - 1) {
           tl.to(textRef.current, {
             opacity: 0,
             y: -10,

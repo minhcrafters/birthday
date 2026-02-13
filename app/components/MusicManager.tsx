@@ -52,8 +52,8 @@ export default function MusicManager({
   const introTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [introDuration, setIntroDuration] = useState(0);
-  const [hasIntroTransitionHappened, setHasIntroTransitionHappened] =
-    useState(false);
+  // Replace state with a ref to avoid calling setState synchronously inside effects
+  const hasIntroTransitionHappenedRef = useRef<boolean>(false);
 
   // 1. Initialization (Load Buffers & Setup Context)
   useEffect(() => {
@@ -339,27 +339,106 @@ export default function MusicManager({
       const shouldPlayVocals = inTitleScreen && !isMenuMounted;
       const targetVocalVol = shouldPlayVocals ? volume : 0;
 
-      let duration = 3.0;
+      // Shorter, more natural fade for vocals in/out (seconds).
+      // Keep the initial transition instant so the intro->title cut remains gapless.
+      let duration = 2.5;
 
+      // If you want slightly different timing when the menu is mounting,
+      // you can uncomment and tweak the value below.
       // if (inTitleScreen && isMenuMounted) {
-      //   duration = 2.5;
+      //   duration = 0.6;
       // }
 
       // Special case: First entry to Title Screen (Intro -> Title transition)
       // We want this to be instant (Gapless drop) so the vocals hit hard immediately
-      if (inTitleScreen && !hasIntroTransitionHappened) {
+      if (inTitleScreen && !hasIntroTransitionHappenedRef.current) {
         duration = 0;
-        setHasIntroTransitionHappened(true);
+        // Mark as handled using a ref so we don't trigger a React re-render inside this effect
+        hasIntroTransitionHappenedRef.current = true;
       }
 
       gsap.to(gainVocalsRef.current.gain, {
         value: targetVocalVol,
         duration: duration,
-        ease: "power2.in",
+        ease: "power2.inOut",
         overwrite: "auto",
       });
     }
-  }, [volume, inTitleScreen, isMenuMounted, hasIntroTransitionHappened]);
+  }, [volume, inTitleScreen, isMenuMounted]);
+
+  // 5. Pause global BGM when an in-letter video plays, and restore when it pauses
+  useEffect(() => {
+    const onVideoPlay = () => {
+      if (!contextRef.current) return;
+      // Duck all music gains quickly
+      if (gainIntroRef.current) {
+        gsap.to(gainIntroRef.current.gain, {
+          value: 0,
+          duration: 0.25,
+          overwrite: "auto",
+        });
+      }
+      if (gainAccRef.current) {
+        gsap.to(gainAccRef.current.gain, {
+          value: 0,
+          duration: 0.25,
+          overwrite: "auto",
+        });
+      }
+      if (gainVocalsRef.current) {
+        gsap.to(gainVocalsRef.current.gain, {
+          value: 0,
+          duration: 0.25,
+          overwrite: "auto",
+        });
+      }
+    };
+
+    const onVideoPause = () => {
+      if (!contextRef.current) return;
+      // Restore volumes to the same logic used in the volume & ducking effect
+      if (gainIntroRef.current) {
+        gsap.to(gainIntroRef.current.gain, {
+          value: volume,
+          duration: 0.5,
+          overwrite: "auto",
+        });
+      }
+      if (gainAccRef.current) {
+        gsap.to(gainAccRef.current.gain, {
+          value: volume,
+          duration: 0.5,
+          overwrite: "auto",
+        });
+      }
+      if (gainVocalsRef.current) {
+        const shouldPlayVocals = inTitleScreen && !isMenuMounted;
+        const targetVocalVol = shouldPlayVocals ? volume : 0;
+        gsap.to(gainVocalsRef.current.gain, {
+          value: targetVocalVol,
+          duration: 0.5,
+          overwrite: "auto",
+        });
+      }
+    };
+
+    window.addEventListener("letter-video-play", onVideoPlay as EventListener);
+    window.addEventListener(
+      "letter-video-pause",
+      onVideoPause as EventListener,
+    );
+
+    return () => {
+      window.removeEventListener(
+        "letter-video-play",
+        onVideoPlay as EventListener,
+      );
+      window.removeEventListener(
+        "letter-video-pause",
+        onVideoPause as EventListener,
+      );
+    };
+  }, [volume, inTitleScreen, isMenuMounted]);
 
   return null;
 }

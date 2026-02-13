@@ -6,6 +6,7 @@ import LyricsDisplay from "./LyricsDisplay";
 interface TitleScreenProps {
   onStart: () => void;
   onGalleryOpen: () => void;
+  onCreditsOpen: () => void;
   skipIntro?: boolean;
   loopsStartTime?: number;
   audioContext?: AudioContext | null;
@@ -14,6 +15,7 @@ interface TitleScreenProps {
 const TitleScreen = ({
   onStart,
   onGalleryOpen,
+  onCreditsOpen,
   skipIntro = false,
   loopsStartTime = 0,
   audioContext = null,
@@ -128,11 +130,27 @@ const TitleScreen = ({
 
           <button
             onClick={onGalleryOpen}
-            disabled
-            className="group relative px-10 py-4 overflow-hidden border border-gray-800 bg-black cursor-not-allowed opacity-50"
+            className="group relative px-10 py-4 overflow-hidden border border-white bg-black hover:border-white transition-colors duration-500"
           >
-            <span className="relative flex items-center justify-between text-xs tracking-[0.3em] font-medium text-gray-600">
-              <span>VIEW GALLERY (WIP)</span>
+            <div className="absolute inset-0 w-0 bg-white transition-all duration-500 ease-out group-hover:w-full" />
+            <span className="relative flex items-center justify-between text-xs tracking-[0.3em] font-medium text-white group-hover:text-black transition-colors duration-300">
+              <span>VIEW GALLERY</span>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                →
+              </span>
+            </span>
+          </button>
+
+          <button
+            onClick={onCreditsOpen}
+            className="group relative px-10 py-4 overflow-hidden border border-white bg-black hover:border-white transition-colors duration-500"
+          >
+            <div className="absolute inset-0 w-0 bg-white transition-all duration-500 ease-out group-hover:w-full" />
+            <span className="relative flex items-center justify-between text-xs tracking-[0.3em] font-medium text-white group-hover:text-black transition-colors duration-300">
+              <span>CREDITS</span>
+              <span className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                →
+              </span>
             </span>
           </button>
         </div>

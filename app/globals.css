@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./colors.css";
 
 :root {
     --background: #000000;
@@ -6,7 +7,10 @@
 }
 
 body {
-    background: var(--background);
+    /* Layered background: subtle darkening gradient over the image for readability */
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
+        url("/images/bg/hbp_thumbnail_1.png") center/cover no-repeat;
     color: var(--foreground);
     font-family:
         var(--font-serif), ui-serif, Georgia, Cambria, "Times New Roman", Times,
@@ -18,6 +22,7 @@ body {
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+    position: relative;
 }
 
 /* Custom Utilities for cinematic feel if Tailwind isn't enough */

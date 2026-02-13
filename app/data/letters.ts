@@ -1,82 +1,42 @@
 export interface LetterData {
   id: string;
   nickname: string;
-  content: string[]; // Array of paragraphs
-  imageSrc?: string; // Path to profile picture
+  imageSrc?: string;
+  bgmSrc?: string;
+  content?: string[]; // Kept for compatibility with SurpriseReveal (slideshow mode)
 }
 
+// Order matters for the list
 export const letters: LetterData[] = [
-  {
-    id: "architect",
-    nickname: "The Architect",
-    imageSrc: "/images/the architect.svg",
-    content: [
-      "To the one who builds dreams out of thin air,",
-      "It has been a privilege to watch you grow this past year. Like a skyscraper finding its footing, you've grounded yourself while reaching for the clouds.",
-      "May this next chapter be your most structural sound and beautifully designed yet.",
-      "Happy Birthday.",
-    ],
-  },
   {
     id: "ella",
     nickname: "Ella",
     imageSrc: "/images/pfp/ella.png",
-    content: [
-      "Dear Halo,",
-      "Uhh we haven't known each other long at all, I'd say I barely know you at all, but hey that can change in the future for sure!",
-      "You're 19 now huh, your gonna be out of education soon I guess, good luck on your studies and whatever you want to achieve.",
-      "Also stop thinking so negatively about yourself, I still believe you'll find a partner that genuinely cares about you.",
-      "So good luck with everything, and many many returns of the day.",
-    ],
   },
   {
-    id: "velvet",
-    nickname: "Velvet",
-    imageSrc: "/images/velvet.svg",
-    content: [
-      "Dearest,",
-      "Some people are loud like thunderstorms. You are quiet like snowfall. It accumulates, soft and heavy, changing the whole landscape before anyone notices.",
-      "Thank you for the peace you bring to this chaotic world.",
-      "With all my love.",
-    ],
+    id: "snoofy",
+    nickname: "Snoofy",
+    imageSrc: "/images/pfp/snoofy.png",
   },
   {
-    id: "pilot",
-    nickname: "The Pilot",
-    imageSrc: "/images/pilot.svg",
-    content: [
-      "To our fearless navigator,",
-      "Navigating through life isn't always easy, but you handle the turbulence with such grace.",
-      "Here's to clear skies and smooth landings for the year ahead.",
-      "Fly high!",
-    ],
+    id: "aoco",
+    nickname: "Aoco",
+    imageSrc: "/images/pfp/aoco.png",
   },
   {
-    id: "gardener",
-    nickname: "The Gardener",
-    imageSrc: "/images/the gardener.svg",
-    content: [
-      "To the one who nurtures,",
-      "Just as you tend to your garden, you tend to the hearts of everyone around you. Watching you bloom has been the highlight of my year.",
-      "May your year be filled with vibrant colors and sweet scents.",
-      "Growth is beautiful on you.",
-    ],
+    id: "pychael",
+    nickname: "Pychael",
+    imageSrc: "/images/pfp/pychael.png",
   },
   {
-    id: "scholar",
-    nickname: "The Scholar",
-    imageSrc: "/images/scholar.svg",
-    content: [
-      "To the seeker of truth,",
-      "Your curiosity is infectious. Every conversation with you leaves me wondering, thinking, and learning.",
-      "Never stop asking 'why'. It's your superpower.",
-      "Happy Birthday!",
-    ],
+    id: "turtles",
+    nickname: "Turtles",
+    imageSrc: "/images/pfp/turtles.webp",
   },
   {
     id: "surprise",
     nickname: "A Surprise",
-    imageSrc: "/images/stargazer.svg", // Placeholder or reuse
+    imageSrc: "/images/stargazer.svg",
     content: [
       "Shiori.",
       "私が崇拝していた人。",
