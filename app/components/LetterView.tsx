@@ -4,7 +4,6 @@ import Ella from "./letters/Ella";
 import Snoofy from "./letters/Snoofy";
 import Aoco from "./letters/Aoco";
 import Pychael from "./letters/Pychael";
-import Scholar from "./letters/Scholar";
 import Surprise from "./letters/Surprise";
 import Turtles from "./letters/Turtles";
 
