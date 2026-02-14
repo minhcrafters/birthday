@@ -181,7 +181,7 @@ export default function Snoofy({
               </p>
               <video
                 ref={videoRef}
-                src="/video/happy birthday shiori.mp4"
+                src="/video/happy-birthday-shiori.mp4"
                 className="letter-video w-full md:w-1/2 object-cover rounded-lg shadow-2xl border border-white/20 mt-4 mx-auto block"
                 controls
                 onPlay={() =>
