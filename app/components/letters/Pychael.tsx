@@ -154,10 +154,7 @@ export default function Pychael({
               ref={textRef}
               className="block font-serif text-2xl md:text-4xl leading-relaxed text-gray-200 select-text cursor-text w-full max-h-full px-4 py-6"
             >
-              <p>
-                To my favorite halo, the 5'13 japanese muscular tomboy, and the
-                realest nigga that I know,
-              </p>
+              <p>To my bestie Shiori,</p>
               <br />
               <div className="float-right ml-6 mb-1 relative z-0">
                 <Image
@@ -181,10 +178,10 @@ export default function Pychael({
                 thinking you were a rich ass dude to finding out you're the
                 coolest (and scariest) tomboy I know (still being rich ass tho
                 hehe). Looking back, we really went from random occasional DMs
-                to us calling each other niggas and screaming at the top of our
-                lungs with that one skeleton shield GIF. Imma be honest, it has
-                never been boring with you. Even when you're busy, you still
-                make time, and I appreciate that.
+                to us screaming at the top of our lungs with that one skeleton
+                shield GIF. Imma be honest, it has never been boring with you.
+                Even when you're busy, you still make time, and I appreciate
+                that.
               </p>
               <p>
                 You trusted me when you did not trust many people. You talked
