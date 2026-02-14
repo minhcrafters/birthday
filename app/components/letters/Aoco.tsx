@@ -176,8 +176,8 @@ export default function Aoco({
                 HAPPY BDAY SHIORIIIIIIII)
               </p>
               <p>
-                Even though we didn't really talk much, you're one of the people
-                that i talked to the most.
+                Even though we didn't really know each other really long, you're
+                one of the people that i talked to the most.
               </p>
               <p>And we actually became friends, frequently talked in dms.</p>
               <p>
