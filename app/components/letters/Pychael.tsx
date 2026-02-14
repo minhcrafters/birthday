@@ -154,7 +154,10 @@ export default function Pychael({
               ref={textRef}
               className="block font-serif text-2xl md:text-4xl leading-relaxed text-gray-200 select-text cursor-text w-full max-h-full px-4 py-6"
             >
-              <p>To my bestie Shiori,</p>
+              <p>
+                To my favorite halo, the 5'13 japanese muscular tomboy, and the
+                realest nigga that I know,
+              </p>
               <br />
               <div className="float-right ml-6 mb-1 relative z-0">
                 <Image
