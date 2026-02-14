@@ -8,6 +8,7 @@ interface MusicManagerProps {
   inTitleScreen: boolean;
   isMenuMounted?: boolean; // New prop to handle transition fade out
   volume: number; // 0 to 1
+  fadeDuration?: number; // Duration for volume changes
   onIntroEnd: () => void;
   onDurationLoaded?: (duration: number) => void;
   onLoopsStarted?: (loopsStartTime: number, audioContext: AudioContext) => void;
@@ -20,6 +21,7 @@ export default function MusicManager({
   inTitleScreen,
   isMenuMounted = false,
   volume,
+  fadeDuration = 0.5,
   onIntroEnd,
   onDurationLoaded,
   onLoopsStarted,
@@ -231,7 +233,8 @@ export default function MusicManager({
     started,
     isAudioLoaded,
     textDuration,
-    volume,
+    // IMPORTANT: do NOT depend on `volume` here. Changing volume when clicking letters
+    // should only duck/restore gains (effect #4), not reschedule/recreate sources.
     onIntroEnd,
     onDurationLoaded,
     onLoopsStarted,
@@ -320,7 +323,7 @@ export default function MusicManager({
     if (gainIntroRef.current) {
       gsap.to(gainIntroRef.current.gain, {
         value: volume,
-        duration: 0.5,
+        duration: fadeDuration,
         overwrite: "auto",
       });
     }
@@ -329,7 +332,7 @@ export default function MusicManager({
     if (gainAccRef.current) {
       gsap.to(gainAccRef.current.gain, {
         value: volume,
-        duration: 0.5,
+        duration: fadeDuration,
         overwrite: "auto",
       });
     }
@@ -364,7 +367,7 @@ export default function MusicManager({
         overwrite: "auto",
       });
     }
-  }, [volume, inTitleScreen, isMenuMounted]);
+  }, [volume, inTitleScreen, isMenuMounted, fadeDuration]);
 
   // 5. Pause global BGM when an in-letter video plays, and restore when it pauses
   useEffect(() => {

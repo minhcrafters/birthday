@@ -195,8 +195,8 @@ export default function Pychael({
                 sister, your work, and the people you let close.
               </p>
               <p>
-                I know stuff get heavy sometimes, with the side effects of
-                antidepressants and constant exhaustion, and it makes me
+                I know stuff get heavy sometimes, among the side effects of
+                antidepressants and constant exhaustion, but it makes me
                 appreciate our trust even more. I hate seeing you on the low,
                 but I respect the hell out of you for still standing. You are
                 genuinely one of the strongest people I know, both physically

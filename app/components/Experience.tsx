@@ -7,6 +7,7 @@ import Starfield, { STARFIELD_OPACITY } from "./Starfield";
 import Gallery from "./Gallery";
 import Credits from "./Credits";
 import SurpriseReveal from "./SurpriseReveal";
+import ExtraWorks from "./extra/ExtraWorks";
 import { useSound } from "../contexts/SoundContext";
 import React, { useRef, useState, useEffect } from "react";
 import gsap from "gsap";
@@ -50,6 +51,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
   const [introComplete, setIntroComplete] = useState(false);
   const [activeLetterId, setActiveLetterId] = useState<string | null>(null);
   const [audioVolume, setAudioVolume] = useState(0.5); // Default BGM volume 0.5
+  const [bgmFadeDuration, setBgmFadeDuration] = useState(0.5);
   const [shouldPlayLoops, setShouldPlayLoops] = useState(false); // Controls when loops start
   const [introDuration, setIntroDuration] = useState(0); // For syncing
   const [loopsStartTime, setLoopsStartTime] = useState(0); // Audio loop start time
@@ -70,6 +72,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
   const [menuInteractive, setMenuInteractive] = useState(false); // Controls if Menu can influence stars
   const [showGallery, setShowGallery] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
+  const [showExtraWorks, setShowExtraWorks] = useState(false);
   const [showSurprise, setShowSurprise] = useState(false);
   const [readLetterIds, setReadLetterIds] = useState<string[]>([]); // Track read letters
   const starfieldSpeedRef = useRef(0); // Shared Starfield Ref
@@ -140,6 +143,10 @@ export default function Experience({ galleryImages }: ExperienceProps) {
     },
     [],
   );
+
+  const handleDurationLoaded = React.useCallback((d: number) => {
+    setIntroDuration(d);
+  }, []);
 
   // Watch for menu mount to start transition
   useGSAP(() => {
@@ -730,7 +737,8 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
       // White Fade Out Sequence
       if (transitionOverlayRef.current) {
-        // Fade out music immediately
+        // Fade out music gradually
+        setBgmFadeDuration(3.0);
         setAudioVolume(0);
 
         gsap.set(transitionOverlayRef.current, {
@@ -761,6 +769,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
     // Handle Normal Letter
     playSfx("open");
     setActiveLetterId(id);
+    setBgmFadeDuration(0.5);
     setAudioVolume(0.2); // Duck volume
   };
 
@@ -771,6 +780,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
     playSfx("close");
     setActiveLetterId(null);
+    setBgmFadeDuration(0.5);
     setAudioVolume(0.5); // Restore volume
   };
 
@@ -813,8 +823,9 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         // When Menu is mounted, showTitleScreen becomes false at end of transition.
         isMenuMounted={menuMounted}
         volume={audioVolume}
+        fadeDuration={bgmFadeDuration}
         onIntroEnd={handleIntroAudioEnd}
-        onDurationLoaded={(d) => setIntroDuration(d)}
+        onDurationLoaded={handleDurationLoaded}
         onLoopsStarted={handleLoopsStarted}
       />
 
@@ -830,6 +841,10 @@ export default function Experience({ galleryImages }: ExperienceProps) {
             onGalleryOpen={() => {
               setShowGallery(true);
               setHasSeenTitleIntro(true); // Also set if they go to gallery first
+            }}
+            onExtraWorksOpen={() => {
+              setShowExtraWorks(true);
+              setHasSeenTitleIntro(true); // Treat as "seen" so we don't re-run intro animation
             }}
             onCreditsOpen={() => setShowCredits(true)}
             skipIntro={hasSeenTitleIntro}
@@ -869,6 +884,11 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
       {showCredits && <Credits onClose={() => setShowCredits(false)} />}
 
+      <ExtraWorks
+        open={showExtraWorks}
+        onClose={() => setShowExtraWorks(false)}
+      />
+
       {/* AudioControl ONLY for Letter Voiceovers (if any) or extra SFX, NOT BGM */}
       {activeLetter && (
         <AudioControl
@@ -886,6 +906,9 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         <SurpriseReveal
           letter={letters.find((l) => l.id === "surprise")!}
           onComplete={() => {
+            setReadLetterIds((prev) =>
+              prev.includes("surprise") ? prev : [...prev, "surprise"],
+            );
             setShowSurprise(false);
             setMenuInteractive(true); // Re-enable menu interaction
             gsap.set(transitionOverlayRef.current, {

@@ -1,9 +1,7 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { LetterData } from "../data/letters";
-
-const SURPRISE_UNLOCKED = false;
 
 interface SurpriseRevealProps {
   letter: LetterData;
@@ -17,34 +15,56 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
   const whiteOverlayRef = useRef<HTMLDivElement>(null);
-  const [canClose, setCanClose] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const handleClose = () => {
-    if (!canClose) return;
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isAnimating, setIsAnimating] = useState(true); // Start true to block clicks during intro
 
-    gsap.to(containerRef.current, {
-      autoAlpha: 0,
-      duration: 2,
-      ease: "power2.inOut",
-      onComplete: onComplete,
-    });
+  // Audio setup
+  useEffect(() => {
+    const audio = new Audio("/audio/prelude.wav");
+    audio.loop = true;
+    audio.volume = 0.4;
+
+    audioRef.current = audio;
+
+    return () => {
+      // Fade out audio on unmount
+      if (audioRef.current) {
+        const aud = audioRef.current;
+        // Simple fade out if we could use GSAP on it, but standard pause is fine for cleanup
+        aud.pause();
+        aud.currentTime = 0;
+      }
+    };
+  }, []);
+
+  // Fade out audio helper
+  const fadeOutAudio = () => {
+    if (audioRef.current) {
+      gsap.to(audioRef.current, {
+        volume: 0,
+        duration: 2,
+        onComplete: () => audioRef.current?.pause(),
+      });
+    }
   };
 
+  // Initial Entrance Animation
   useGSAP(
     () => {
-      if (!containerRef.current || !textRef.current) return;
-
-      const tl = gsap.timeline();
+      const tl = gsap.timeline({
+        onComplete: () => setIsAnimating(false),
+      });
 
       // Initial Set
       gsap.set(containerRef.current, { autoAlpha: 1 });
-      gsap.set(textRef.current, { opacity: 1, text: "" }); // Reset text container
 
       // Fade out the white overlay (Entrance)
       if (whiteOverlayRef.current) {
         tl.to(whiteOverlayRef.current, {
           opacity: 0,
-          duration: 3, // Very slow fade in from white
+          duration: 3,
           ease: "power2.inOut",
           onComplete: () => {
             gsap.set(whiteOverlayRef.current, { display: "none" });
@@ -52,35 +72,8 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
         });
       }
 
-      // Check if unlocked
-      if (!SURPRISE_UNLOCKED) {
-        // ... (locked logic) ...
-      }
-
-      const content = letter.content;
-      if (!content) return;
-
-      // Loop through paragraphs - ONE BY ONE
-      content.forEach((paragraph, index) => {
-        // 1. Set Text & Prepare Fade In
-        tl.call(() => {
-          if (textRef.current) {
-            textRef.current.innerText = paragraph;
-            // Styling adjustments based on content type (rudimentary check)
-            if (index === 0) {
-              textRef.current.className =
-                "text-4xl md:text-6xl font-bold mb-8 text-white font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
-            } else if (index === content.length - 1) {
-              textRef.current.className =
-                "text-2xl md:text-3xl mt-8 italic text-gray-300 font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
-            } else {
-              textRef.current.className =
-                "text-2xl md:text-4xl font-light text-gray-100 font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
-            }
-          }
-        });
-
-        // 2. Slow Fade In
+      // Animate first text in specifically
+      if (textRef.current) {
         tl.fromTo(
           textRef.current,
           { opacity: 0, y: 10, filter: "blur(5px)" },
@@ -88,55 +81,119 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
             opacity: 1,
             y: 0,
             filter: "blur(0px)",
-            duration: 2.5, // Slow fade in
+            duration: 2.5,
             ease: "power2.out",
+            onStart: () => {
+              if (audioRef.current) {
+                audioRef.current
+                  .play()
+                  .catch((e) => console.log("Audio play failed", e));
+              }
+            },
           },
-          index === 0 ? "-=1.0" : "+=0.5", // Overlap first with white fade, others have gap
+          "-=1.5", // Overlap with white fade
         );
+      }
+    },
+    { scope: containerRef },
+  );
 
-        // 3. Read Time (Hold)
-        // Calculate read time: minimum 3s, plus 0.08s per character
-        const readTime = Math.max(3, paragraph.length * 0.08);
-        tl.to({}, { duration: readTime });
+  // Handle click to advance
+  const handleClick = () => {
+    if (isAnimating || !textRef.current) return;
 
-        // 4. Slow Fade Out (if not last)
-        if (index < content.length - 1) {
-          tl.to(textRef.current, {
-            opacity: 0,
-            y: -10,
-            filter: "blur(5px)",
-            duration: 2, // Slow fade out
-            ease: "power2.in",
-          });
-        }
-      });
+    // Ensure audio is playing if autoplay failed
+    if (audioRef.current && audioRef.current.paused) {
+      audioRef.current.play().catch(() => {});
+    }
 
-      // After loop ends (last item is still visible or just finished holding)
-      // Fade out the last item too
+    const content = letter.content || [];
+    const isLastSlide = currentIndex >= content.length - 1;
+
+    setIsAnimating(true);
+
+    if (!isLastSlide) {
+      // Animate OUT current text -> Increment -> Animate IN next text
+      const tl = gsap.timeline();
+
+      // OUT
       tl.to(textRef.current, {
         opacity: 0,
         y: -10,
         filter: "blur(5px)",
-        duration: 2,
+        duration: 1,
+        ease: "power2.in",
+        onComplete: () => {
+          setCurrentIndex((prev) => prev + 1);
+        },
+      });
+
+      // IN (Using a slight delay to allow state update to render)
+      tl.to(
+        textRef.current,
+        {
+          opacity: 1,
+          y: 0,
+          filter: "blur(0px)",
+          duration: 2,
+          ease: "power2.out",
+          delay: 0.1, // Wait for React render
+        },
+        "+=0.1",
+      );
+
+      tl.call(() => setIsAnimating(false));
+    } else {
+      // Final slide: Fade everything out and exit
+      fadeOutAudio();
+
+      const tl = gsap.timeline();
+
+      // Text OUT
+      tl.to(textRef.current, {
+        opacity: 0,
+        y: -10,
+        filter: "blur(5px)",
+        duration: 1.5,
         ease: "power2.in",
       });
 
-      // Enable closing
-      tl.call(() => setCanClose(true));
+      // Container OUT
+      tl.to(
+        containerRef.current,
+        {
+          autoAlpha: 0,
+          duration: 2,
+          ease: "power2.inOut",
+          onComplete: onComplete,
+        },
+        "-=0.5",
+      );
+    }
+  };
 
-      // Animate close hint in
-      tl.to(".close-hint", { opacity: 1, duration: 2 });
-    },
-    { scope: containerRef },
-  );
+  // Determine styles based on index (reusing original logic)
+  const getTextStyle = (index: number, total: number) => {
+    if (index === 0) {
+      return "text-4xl md:text-6xl font-bold mb-8 text-white font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
+    } else if (index === total - 1) {
+      return "text-2xl md:text-3xl mt-8 italic text-gray-300 font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
+    } else {
+      return "text-2xl md:text-4xl font-light text-gray-100 font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
+    }
+  };
+
+  const content = letter.content || [];
+  const currentText = content[currentIndex] || "";
+  const isLast = currentIndex === content.length - 1;
 
   return (
     <div
       ref={containerRef}
       className={`fixed inset-0 z-300 flex flex-col items-center justify-center bg-black ${
-        canClose ? "cursor-pointer" : "cursor-default"
+        !isAnimating ? "cursor-pointer" : "cursor-default"
       }`}
-      onClick={handleClose}
+      onClick={handleClick}
     >
       {/* White Flash Overlay for Entrance Transition */}
       <div
@@ -148,18 +205,22 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
       <div className="absolute inset-0 bg-gradient-radial from-white/5 to-transparent opacity-50 pointer-events-none"></div>
 
       {/* Centered Text Container - Updates dynamically */}
-      <div className="relative z-30 max-w-4xl px-8 flex justify-center items-center min-h-50">
+      <div className="relative z-30 max-w-4xl px-8 flex justify-center items-center min-h-[50vh]">
         <div
           ref={textRef}
-          className="text-white font-serif tracking-wider leading-relaxed text-center opacity-0 will-change-transform will-change-opacity"
+          className={`${getTextStyle(currentIndex, content.length)} text-center will-change-transform will-change-opacity`}
         >
-          {/* Text injected by GSAP */}
+          {currentText}
         </div>
       </div>
 
       {/* Close Hint */}
-      <div className="close-hint opacity-0 absolute bottom-12 text-xs uppercase tracking-[0.3em] text-gray-500 animate-pulse pointer-events-none">
-        {SURPRISE_UNLOCKED ? "Fin." : "Click to close"}
+      <div
+        className={`absolute bottom-12 text-xs uppercase tracking-[0.3em] text-gray-500 transition-opacity duration-1000 pointer-events-none ${
+          !isAnimating ? "opacity-100 animate-pulse" : "opacity-0"
+        }`}
+      >
+        {isLast ? "Click to close" : "Click to continue"}
       </div>
     </div>
   );
