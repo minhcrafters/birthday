@@ -12,7 +12,6 @@ import { useSound } from "../contexts/SoundContext";
 interface GalleryProps {
   onClose: () => void;
   images: GalleryImage[];
-  // Optional starfield control (matches LettersList API)
   starfieldSpeedRef?: React.RefObject<number>;
   controlsStarfield?: boolean;
 }
@@ -29,19 +28,15 @@ export default function Gallery({
   const containerRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Scroll physics refs (copied from LettersList for starfield responsiveness)
   const lastScrollTopRef = useRef(0);
   const rAFRef = useRef<number | null>(null);
 
-  // Build categories from image src paths. Expects paths like "/images/gallery/category/filename.jpg"
   const categoriesMap = useMemo(() => {
     const map = new Map<string, GalleryImage[]>();
     images.forEach((img) => {
       try {
         let src = img.src ?? "";
-        // Normalize leading slashes
         if (src.startsWith("/")) src = src.slice(1);
-        // Remove leading "images/gallery/" or "images/" if present
         if (src.toLowerCase().startsWith("images/gallery/")) {
           src = src.slice("images/gallery/".length);
         } else if (src.toLowerCase().startsWith("images/")) {
@@ -52,7 +47,7 @@ export default function Gallery({
         const arr = map.get(category) || [];
         arr.push(img);
         map.set(category, arr);
-      } catch (e) {
+      } catch {
         const arr = map.get("Uncategorized") || [];
         arr.push(img);
         map.set("Uncategorized", arr);
@@ -102,24 +97,25 @@ export default function Gallery({
     }
 
     return () => {
-      if (container) container.removeEventListener("scroll", handleScroll);
-      if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
+      if (container) {
+        container.removeEventListener("scroll", handleScroll);
+      }
+      if (rAFRef.current) {
+        cancelAnimationFrame(rAFRef.current);
+      }
     };
   }, [controlsStarfield, starfieldSpeedRef]);
 
-  // Entrance Animation
   useGSAP(
     () => {
-      const tl = gsap.timeline({ delay: 0.5 }); // Delay to let the warp effect shine through initially
+      const tl = gsap.timeline({ delay: 0.5 });
 
-      // Fade in container (background)
       tl.fromTo(
         containerRef.current,
         { autoAlpha: 0 },
         { autoAlpha: 1, duration: 1.5, ease: "power2.inOut" },
       );
 
-      // Stagger in images / categories
       tl.fromTo(
         ".gallery-item",
         { y: 50, opacity: 0, scale: 0.9 },
@@ -139,7 +135,6 @@ export default function Gallery({
 
   const handleClose = () => {
     playSfx("close");
-    // Exit animation
     gsap.to(containerRef.current, {
       autoAlpha: 0,
       duration: 0.8,
@@ -156,24 +151,26 @@ export default function Gallery({
   const handleCategoryClick = (key: string) => {
     playSfx("click");
     setSelectedCategory(key);
-    // Reset scroll to top for the images view
-    if (gridRef.current) gridRef.current.scrollTop = 0;
+    if (gridRef.current) {
+      gridRef.current.scrollTop = 0;
+    }
   };
 
   const imagesToShow = selectedCategory
     ? categoriesMap.get(selectedCategory) || []
     : images;
 
+  const formatCategoryName = (name: string) =>
+    name.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
   return (
     <div
       ref={containerRef}
       className="fixed inset-0 z-60 flex justify-center text-white opacity-0 pointer-events-none"
     >
-      {/* Header & Instructions Layer (Fixed Top) */}
       <div className="absolute top-0 left-0 right-0 z-50 pointer-events-none">
         <div className="absolute inset-0 h-32 bg-linear-to-b from-black via-black/80 to-transparent -z-10" />
 
-        {/* Back Button - Fixed Top Left */}
         <div className="absolute top-8 left-8 z-50 pointer-events-auto">
           {selectedCategory ? (
             <button
@@ -231,7 +228,6 @@ export default function Gallery({
           )}
         </div>
 
-        {/* Title - Fixed Top Right */}
         <div className="absolute top-8 right-8 z-50 text-right pointer-events-none">
           <h1 className="text-xl md:text-4xl font-serif font-bold tracking-[0.15em] uppercase text-bright drop-shadow-lg mb-2">
             Gallery
@@ -244,18 +240,14 @@ export default function Gallery({
         </div>
       </div>
 
-      {/* Scrollable Grid Container */}
       <div className="absolute inset-0 z-10 flex justify-center overflow-hidden pointer-events-auto">
         <div className="relative w-full max-w-5xl h-full">
-          {/* Top Fade Mask */}
           <div className="absolute top-0 left-0 right-0 h-32 bg-linear-to-b from-black via-black/80 to-transparent z-20 pointer-events-none" />
 
-          {/* Scrollable Area */}
           <nav
             ref={gridRef}
             className="relative h-full overflow-y-auto no-scrollbar pt-40 pb-32 px-6"
           >
-            {/* If no category is selected -> show categories */}
             {!selectedCategory ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
                 {categories.map((cat) => (
@@ -264,7 +256,7 @@ export default function Gallery({
                     onClick={() => handleCategoryClick(cat.key)}
                     className="gallery-item group relative aspect-square cursor-pointer flex flex-col items-center justify-center p-4 transition-all duration-500 hover:scale-105"
                   >
-                    <div className="absolute inset-0 backdrop-blur-sm border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)] bg-slate-900/40 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]"></div>
+                    <div className="absolute inset-0 backdrop-blur-sm border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)] bg-slate-900/40 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]" />
 
                     <div className="relative z-10 w-full h-full overflow-hidden rounded-lg opacity-80 group-hover:opacity-100 transition-opacity duration-300">
                       {cat.preview ? (
@@ -291,7 +283,6 @@ export default function Gallery({
               </div>
             ) : (
               <>
-                {/* In-category: small back to categories control */}
                 <div className="mb-6">
                   <button
                     onClick={() => {
@@ -317,10 +308,9 @@ export default function Gallery({
                     Back to categories
                   </button>
                   <div className="mt-2 text-sm text-text-muted">
-                    {selectedCategory &&
-                      selectedCategory
-                        .replace(/[-_]/g, " ")
-                        .replace(/\b\w/g, (c) => c.toUpperCase())}
+                    {selectedCategory
+                      ? formatCategoryName(selectedCategory)
+                      : ""}
                   </div>
                 </div>
 
@@ -331,10 +321,8 @@ export default function Gallery({
                       onClick={() => handleImageClick(img)}
                       className="gallery-item group relative aspect-square cursor-pointer flex flex-col items-center justify-center p-4 transition-all duration-500 hover:scale-105"
                     >
-                      {/* Glassy Background Card (Matches Envelope) */}
-                      <div className="absolute inset-0 backdrop-blur-sm border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)] bg-slate-900/40 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]"></div>
+                      <div className="absolute inset-0 backdrop-blur-sm border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)] bg-slate-900/40 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]" />
 
-                      {/* Image Preview */}
                       <div className="relative z-10 w-full h-full overflow-hidden rounded-lg opacity-80 group-hover:opacity-100 transition-opacity duration-300">
                         <Image
                           src={img.src}
@@ -350,12 +338,10 @@ export default function Gallery({
             )}
           </nav>
 
-          {/* Bottom Fade Mask */}
           <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-black via-black/80 to-transparent z-20 pointer-events-none" />
         </div>
       </div>
 
-      {/* Lightbox */}
       {selectedImage && (
         <ImageView
           image={selectedImage}

@@ -15,49 +15,56 @@ export default function ImageView({ image, onClose }: ImageViewProps) {
 
   useGSAP(
     () => {
-      if (containerRef.current) {
-        gsap.fromTo(
-          containerRef.current,
-          { opacity: 0 },
-          { opacity: 1, duration: 0.3 },
-        );
-        gsap.fromTo(
-          ".image-content",
-          { scale: 0.95, opacity: 0 },
-          {
-            scale: 1,
-            opacity: 1,
-            duration: 0.8,
-            ease: "power3.out",
-            delay: 0.1,
-          },
-        );
+      if (!containerRef.current) {
+        return;
       }
+
+      gsap.fromTo(
+        containerRef.current,
+        { opacity: 0 },
+        { opacity: 1, duration: 0.3 },
+      );
+
+      gsap.fromTo(
+        ".image-content",
+        { scale: 0.95, opacity: 0 },
+        {
+          scale: 1,
+          opacity: 1,
+          duration: 0.8,
+          ease: "power3.out",
+          delay: 0.1,
+        },
+      );
     },
     { scope: containerRef },
   );
 
   const handleClose = () => {
     playSfx("close");
-    if (containerRef.current) {
-      const tl = gsap.timeline({ onComplete: onClose });
-      tl.to(".image-content", {
-        scale: 0.95,
+
+    if (!containerRef.current) {
+      onClose();
+      return;
+    }
+
+    const tl = gsap.timeline({ onComplete: onClose });
+
+    tl.to(".image-content", {
+      scale: 0.95,
+      opacity: 0,
+      duration: 0.3,
+      ease: "power2.in",
+    });
+
+    tl.to(
+      containerRef.current,
+      {
         opacity: 0,
         duration: 0.3,
-        ease: "power2.in",
-      });
-      tl.to(
-        containerRef.current,
-        {
-          opacity: 0,
-          duration: 0.3,
-        },
-        "<",
-      );
-    } else {
-      onClose();
-    }
+      },
+      "<",
+    );
   };
 
   return (
@@ -81,14 +88,14 @@ export default function ImageView({ image, onClose }: ImageViewProps) {
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
         </svg>
       </div>
 
       <div
         className="image-content flex flex-col items-center max-w-[95vw] max-h-[95vh] gap-8"
-        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking image
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="relative border border-white/10 bg-neutral-900 p-1 md:p-2 shadow-2xl">
           <img

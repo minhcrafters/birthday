@@ -1,15 +1,3 @@
-/**
- * ExtraWorks overlay
- *
- * Responsibilities:
- * - Fetch and display media items (audio/video) exposed by the `/api/extra` route.
- * - Animate enter/exit with GSAP and defer unmount until exit completes.
- *
- * Should NOT contain:
- * - File system access (handled by the API route)
- * - Global app state orchestration (parent controls open/close)
- */
-
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -39,9 +27,6 @@ function prettyTitle(filename: string): string {
 }
 
 export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
-  // Deferred unmounting state:
-  // - `open` is the source of truth from parent
-  // - `mounted` keeps the component in the tree long enough to play close animation
   const [mounted, setMounted] = useState(false);
 
   const [items, setItems] = useState<ExtraMediaItem[]>([]);
@@ -60,19 +45,16 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Keep latest onClose without re-creating animations.
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
 
-  // Track current "open" state for click handling while animating.
   const openRef = useRef(open);
   useEffect(() => {
     openRef.current = open;
   }, [open]);
 
-  // Ensure GSAP React plugin is registered
   gsap.registerPlugin(useGSAP);
 
   const anim = useRef<{
@@ -81,19 +63,16 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
   }>({});
 
   const requestClose = () => {
-    // Prevent re-entrancy / double close while already closed
     if (!openRef.current) return;
     onCloseRef.current();
   };
 
-  // Mount/unmount orchestration based on `open`
   useEffect(() => {
     if (open) {
       setMounted(true);
     }
   }, [open]);
 
-  // Fetch items when opened (but only once per open cycle)
   useEffect(() => {
     if (!open) return;
 
@@ -136,7 +115,6 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
     };
   }, [open]);
 
-  // Escape key closes while open
   useEffect(() => {
     if (!mounted) return;
 
@@ -148,7 +126,6 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [mounted]);
 
-  // GSAP open/close animations (run when `open` changes, but only while mounted)
   useGSAP(
     () => {
       if (!mounted) return;
@@ -158,7 +135,6 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
       anim.current.closing?.kill();
 
       if (open) {
-        // Only reset styles when OPENING (resetting during close makes the close animation invisible)
         gsap.set(overlayRef.current, { opacity: 0 });
         gsap.set(panelRef.current, { opacity: 0, y: 16, scale: 0.985 });
 
@@ -183,7 +159,6 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
 
         anim.current.opening = openTl;
       } else {
-        // Close from current visual state (do NOT reset to hidden first)
         const closeTl = gsap.timeline({
           onComplete: () => {
             if (!openRef.current) setMounted(false);

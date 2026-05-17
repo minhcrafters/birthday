@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -27,27 +27,36 @@ export default function Pychael({
 
   useEffect(() => {
     if (!isOpen) return;
-    const handleResize = () => {
+
+    const rescale = () => {
       if (!textRef.current || !contentWrapperRef.current) return;
       gsap.set(textRef.current, { clearProps: "scale" });
+      const scaleH =
+        contentWrapperRef.current.clientHeight / textRef.current.scrollHeight;
+      const scaleW =
+        contentWrapperRef.current.clientWidth / textRef.current.scrollWidth;
+      const scale = Math.min(1, scaleH * 0.9, scaleW * 0.95);
       gsap.set(textRef.current, {
-        scale: 0.8,
+        scale,
         transformOrigin: "center center",
       });
     };
-    const timer = setTimeout(handleResize, 10);
-    window.addEventListener("resize", handleResize);
+
+    const timer = setTimeout(rescale, 10);
+    window.addEventListener("resize", rescale);
     return () => {
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", rescale);
       clearTimeout(timer);
     };
   }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onDismiss();
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onDismiss]);
@@ -72,9 +81,16 @@ export default function Pychael({
         tl.fromTo(
           paragraphs,
           { y: 20, opacity: 0 },
-          { y: 0, opacity: 1, stagger: 0.1, duration: 0.8, ease: "power3.out" },
+          {
+            y: 0,
+            opacity: 1,
+            stagger: 0.1,
+            duration: 0.8,
+            ease: "power3.out",
+          },
           "-=0.3",
         );
+
         if (image) {
           tl.fromTo(
             image,
@@ -84,44 +100,46 @@ export default function Pychael({
           );
         }
       } else if (!isOpen && containerRef.current && textRef.current) {
-        const isVisible =
+        const visible =
           Number(gsap.getProperty(containerRef.current, "opacity")) > 0;
-        if (isVisible) {
-          if (timelineRef.current) timelineRef.current.kill();
-          const tl = gsap.timeline({
-            onComplete: () => {
-              gsap.set(containerRef.current, { zIndex: -1, autoAlpha: 0 });
-              if (onCloseComplete) onCloseComplete();
-            },
+        if (!visible) return;
+
+        if (timelineRef.current) timelineRef.current.kill();
+        const tl = gsap.timeline({
+          onComplete: () => {
+            gsap.set(containerRef.current, { zIndex: -1, autoAlpha: 0 });
+            onCloseComplete?.();
+          },
+        });
+        timelineRef.current = tl;
+
+        const paragraphs = textRef.current.querySelectorAll("p");
+        const image = textRef.current.querySelector(".letter-image");
+
+        if (image) {
+          tl.to(image, {
+            x: 20,
+            opacity: 0,
+            duration: 0.5,
+            ease: "power2.in",
           });
-          timelineRef.current = tl;
-
-          const paragraphs = textRef.current.querySelectorAll("p");
-          const image = textRef.current.querySelector(".letter-image");
-
-          if (image)
-            tl.to(image, {
-              x: 20,
-              opacity: 0,
-              duration: 0.5,
-              ease: "power2.in",
-            });
-          tl.to(
-            paragraphs,
-            {
-              y: -10,
-              opacity: 0,
-              stagger: 0.05,
-              duration: 0.4,
-              ease: "power2.in",
-            },
-            "<",
-          ).to(
-            containerRef.current,
-            { opacity: 0, duration: 0.4, ease: "power2.in" },
-            "-=0.2",
-          );
         }
+
+        tl.to(
+          paragraphs,
+          {
+            y: -10,
+            opacity: 0,
+            stagger: 0.05,
+            duration: 0.4,
+            ease: "power2.in",
+          },
+          "<",
+        ).to(
+          containerRef.current,
+          { opacity: 0, duration: 0.4, ease: "power2.in" },
+          "-=0.2",
+        );
       }
     },
     { dependencies: [isOpen] },
@@ -148,24 +166,23 @@ export default function Pychael({
           </div>
           <div
             ref={contentWrapperRef}
-            className="flex-1 min-h-0 relative z-10 flex items-start justify-center overflow-y-auto scrollless"
+            className="flex-1 min-h-0 relative z-10 flex items-center justify-center overflow-hidden"
           >
             <div
               ref={textRef}
-              className="block font-serif text-2xl md:text-4xl leading-relaxed text-gray-200 select-text cursor-text w-full max-h-full px-4 py-6"
+              className="block font-serif text-xl md:text-3xl leading-relaxed text-gray-200 select-text cursor-text w-full"
             >
               <p>
                 To my favorite halo, the 5'13 japanese muscular tomboy, and the
                 realest nigga that I know,
               </p>
-              <br />
               <div className="float-right ml-6 mb-1 relative z-0">
                 <Image
                   src={meta.imageSrc}
-                  width={320}
-                  height={320}
+                  width={256}
+                  height={256}
                   alt={meta.nickname}
-                  className="letter-image w-40 h-40 md:w-72 md:h-72 object-cover rounded-lg shadow-2xl transform rotate-3 contrast-125 border border-white/20"
+                  className="letter-image w-32 h-32 md:w-64 md:h-64 object-cover rounded-lg shadow-2xl transform rotate-3 contrast-125 border border-white/20"
                 />
               </div>
               <p>
@@ -218,29 +235,12 @@ export default function Pychael({
                 Happy birthday, Shiori. You made it through another year. That
                 already counts for something.
               </p>
-              <br />
               <p>Love you /p,</p>
               <p>- Michael/Luigi</p>
             </div>
           </div>
         </div>
       </div>
-      <style jsx>{`
-        /* Hide scrollbar for WebKit browsers (Chrome, Safari, Opera) */
-        .scrollless::-webkit-scrollbar {
-          display: none;
-        }
-
-        /* Hide scrollbar for Firefox */
-        .scrollless {
-          scrollbar-width: none;
-        }
-
-        /* Hide scrollbar for IE and Edge */
-        .scrollless {
-          -ms-overflow-style: none;
-        }
-      `}</style>
     </div>
   );
 }

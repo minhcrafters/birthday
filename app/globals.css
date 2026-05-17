@@ -7,7 +7,6 @@
 }
 
 body {
-    /* Layered background: subtle darkening gradient over the image for readability */
     background:
         linear-gradient(rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0.65)),
         url("/images/bg/hbp_thumbnail_1.png") center/cover no-repeat;
@@ -17,7 +16,7 @@ body {
         serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    overflow: hidden; /* Prevent scrolling on the main body, handle in components */
+    overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
@@ -25,7 +24,6 @@ body {
     position: relative;
 }
 
-/* Custom Utilities for cinematic feel if Tailwind isn't enough */
 .glass-panel {
     background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(12px);
@@ -33,10 +31,10 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
-/* Hide scrollbar but allow scroll */
 .no-scrollbar::-webkit-scrollbar {
     display: none;
 }
+
 .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;

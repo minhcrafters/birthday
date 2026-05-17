@@ -3,7 +3,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 
 interface LyricsDisplayProps {
-  loopsStartTime: number; // Audio context time when loops start
+  loopsStartTime: number;
   audioContext: AudioContext | null;
   isInTitleScreen: boolean;
 }
@@ -15,12 +15,12 @@ const LYRICS = [
   "My time is frozen",
 ];
 
-// Timing calculations
 const BPM = 120;
 const BEATS_PER_LINE = 8;
-const SECONDS_PER_BEAT = 60 / BPM; // 0.5 seconds per beat
-const LINE_DURATION = BEATS_PER_LINE * SECONDS_PER_BEAT; // 4 seconds per line
-const FADE_DURATION = 0.5; // Fade in/out duration in seconds
+const SECONDS_PER_BEAT = 60 / BPM;
+const LINE_DURATION = BEATS_PER_LINE * SECONDS_PER_BEAT;
+const FADE_DURATION = 0.5;
+const TOTAL_LOOP_DURATION = LYRICS.length * LINE_DURATION;
 
 const LyricsDisplay = ({
   loopsStartTime,
@@ -34,22 +34,22 @@ const LyricsDisplay = ({
 
   useGSAP(
     () => {
-      if (!audioContext || loopsStartTime === 0) return;
+      if (!audioContext || loopsStartTime === 0) {
+        return;
+      }
 
-      // Create timeline for lyrics animation
-      // Paused because we control it manually via requestAnimationFrame
       const tl = gsap.timeline({ paused: true });
 
       LYRICS.forEach((_, index) => {
         const lyricEl = lyricsRefs.current[index];
-        if (!lyricEl) return;
+        if (!lyricEl) {
+          return;
+        }
 
-        // Calculate timings for this line
         const startTime = index * LINE_DURATION;
         const fadeInEnd = startTime + FADE_DURATION;
         const fadeOutStart = startTime + LINE_DURATION - FADE_DURATION;
 
-        // Ensure clean state at start of line's window
         tl.fromTo(
           lyricEl,
           { opacity: 0, y: 10 },
@@ -62,11 +62,9 @@ const LyricsDisplay = ({
           startTime,
         );
 
-        // Hold (visible duration)
         const holdDuration = fadeOutStart - fadeInEnd;
         tl.to(lyricEl, { duration: holdDuration }, fadeInEnd);
 
-        // Fade out
         tl.to(
           lyricEl,
           {
@@ -81,36 +79,31 @@ const LyricsDisplay = ({
 
       timelineRef.current = tl;
 
-      // Function to sync timeline with audio loop
       const syncWithAudio = () => {
-        if (!audioContext || !timelineRef.current) return;
+        if (!audioContext || !timelineRef.current) {
+          return;
+        }
 
-        const currentAudioTime = audioContext.currentTime;
-        const elapsedSinceLoopStart = currentAudioTime - loopsStartTime;
+        const elapsedSinceLoopStart = audioContext.currentTime - loopsStartTime;
+        const positionInLoop = elapsedSinceLoopStart % TOTAL_LOOP_DURATION;
 
-        // Calculate position within the loop cycle
-        const totalLoopDuration = LYRICS.length * LINE_DURATION;
-        const positionInLoop = elapsedSinceLoopStart % totalLoopDuration;
-
-        // Update timeline to match audio position
         if (positionInLoop >= 0) {
           timelineRef.current.time(positionInLoop);
         }
 
-        // Continue syncing
         rafRef.current = requestAnimationFrame(syncWithAudio);
       };
 
-      // Start syncing once loops have started
       const startSync = () => {
-        if (!audioContext) return;
+        if (!audioContext) {
+          return;
+        }
 
         const currentAudioTime = audioContext.currentTime;
+
         if (currentAudioTime >= loopsStartTime) {
-          // Loops have started, begin sync
           syncWithAudio();
         } else {
-          // Wait until loops start
           const waitTime = (loopsStartTime - currentAudioTime) * 1000;
           setTimeout(startSync, waitTime);
         }
@@ -128,7 +121,6 @@ const LyricsDisplay = ({
     { scope: containerRef, dependencies: [loopsStartTime, audioContext] },
   );
 
-  // Control visibility based on title screen
   useEffect(() => {
     if (containerRef.current) {
       gsap.to(containerRef.current, {

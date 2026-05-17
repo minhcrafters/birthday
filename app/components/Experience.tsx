@@ -21,7 +21,6 @@ import { GalleryImage } from "../data/galleryData";
 
 gsap.registerPlugin(useGSAP, TextPlugin);
 
-// Disable lag smoothing to prevent animations from pausing/desyncing when tab is backgrounded
 gsap.ticker.lagSmoothing(0);
 
 const SKIP_INTRO = false;
@@ -37,7 +36,7 @@ const INTRO_TEXTS = [
   "A small place filled with words we never say out loud...",
   "and memories you might recognise.",
   "Take your time.",
-  "There’s something waiting for you at the end.",
+  "There's something waiting for you at the end.",
   "For now...",
 ];
 
@@ -47,15 +46,17 @@ interface ExperienceProps {
 
 export default function Experience({ galleryImages }: ExperienceProps) {
   const { playSfx } = useSound();
+
+  // App state
   const [started, setStarted] = useState(false);
   const [introComplete, setIntroComplete] = useState(false);
   const [activeLetterId, setActiveLetterId] = useState<string | null>(null);
-  const [audioVolume, setAudioVolume] = useState(0.5); // Default BGM volume 0.5
+  const [audioVolume, setAudioVolume] = useState(0.5);
   const [bgmFadeDuration, setBgmFadeDuration] = useState(0.5);
-  const [shouldPlayLoops, setShouldPlayLoops] = useState(false); // Controls when loops start
-  const [introDuration, setIntroDuration] = useState(0); // For syncing
-  const [loopsStartTime, setLoopsStartTime] = useState(0); // Audio loop start time
-  const [audioContext, setAudioContext] = useState<AudioContext | null>(null); // Audio context
+  const [shouldPlayLoops, setShouldPlayLoops] = useState(false);
+  const [introDuration, setIntroDuration] = useState(0);
+  const [loopsStartTime, setLoopsStartTime] = useState(0);
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
 
   const masterTimeline = useRef<gsap.core.Timeline | null>(null);
   const containerRef = useRef<HTMLElement>(null);
@@ -66,67 +67,51 @@ export default function Experience({ galleryImages }: ExperienceProps) {
   const audioIntroCompleteRef = useRef(false);
 
   const [showTitleScreen, setShowTitleScreen] = useState(false);
-  const [hasSeenTitleIntro, setHasSeenTitleIntro] = useState(false); // New State
-  // const titleScreenRef = useRef<HTMLDivElement>(null);
-  const [menuMounted, setMenuMounted] = useState(false); // New State to control mounting
-  const [menuInteractive, setMenuInteractive] = useState(false); // Controls if Menu can influence stars
+  const [hasSeenTitleIntro, setHasSeenTitleIntro] = useState(false);
+  const [menuMounted, setMenuMounted] = useState(false);
+  const [menuInteractive, setMenuInteractive] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
   const [showExtraWorks, setShowExtraWorks] = useState(false);
   const [showSurprise, setShowSurprise] = useState(false);
-  const [readLetterIds, setReadLetterIds] = useState<string[]>([]); // Track read letters
-  const starfieldSpeedRef = useRef(0); // Shared Starfield Ref
+  const [readLetterIds, setReadLetterIds] = useState<string[]>([]);
+  const starfieldSpeedRef = useRef(0);
   const transitionOverlayRef = useRef<HTMLDivElement>(null);
 
-  // Check if all regular letters have been read
   const isSurpriseUnlocked = letters
     .filter((l) => l.id !== "surprise")
     .every((l) => readLetterIds.includes(l.id));
 
   const [introDelay, setIntroDelay] = useState<number | null>(null);
 
-  // Helper to calculate natural text duration
+  // Audio sync helpers
   const calculateTextDuration = () => {
-    // Formula matches GSAP loop: (len * 0.08) + 1.2 + 1.0 + 0.5
     return (
       INTRO_TEXTS.reduce((acc, text) => {
         let duration = text.length * 0.08 + 2.7;
 
-        // Add extra time for the special backspace animation on this specific line
         if (text === "Today's Valentine's Day.") {
-          // Extra time breakdown:
-          // + 0.6 (Short pause)
-          // + 0.8 (Backspace 16 chars * 0.05)
-          // + 1.12 (Type "your birthday." 14 chars * 0.08)
-          // - 1.2 (Removed original long pause, replaced by short pause + anim)
-          // Actually, let's just calculate the full specific duration to be safe:
-          // 1.92 (Type old) + 0.6 (Pause) + 0.8 (Back) + 1.12 (Type new) + 2.7 (End seq) = 7.14s
           duration = 7.14;
         }
 
         return acc + duration;
       }, 0) + 1.5
-    ); // +1.5 for initial overlay fade out
+    );
   };
 
   useEffect(() => {
     if (introDuration > 0) {
       const textDur = calculateTextDuration();
-      // If text is longer than audio, we delay the audio start
       const delay = Math.max(0, textDur - introDuration);
       setIntroDelay(delay);
     }
   }, [introDuration]);
 
   const handleTitleScreenStart = () => {
-    // 1. Mount the Menu
     setMenuMounted(true);
-    setHasSeenTitleIntro(true); // Mark intro as seen when leaving
-    // Don't reset speed here, let the animation interpolate from current speed
+    setHasSeenTitleIntro(true);
   };
 
-  // Callback when Intro Audio finishes
-  // Wrapped in useCallback to prevent unnecessary re-renders in MusicManager
   const handleIntroAudioEnd = React.useCallback(() => {
     console.log("Intro audio finished. Resuming timeline if paused.");
     audioIntroCompleteRef.current = true;
@@ -135,7 +120,6 @@ export default function Experience({ galleryImages }: ExperienceProps) {
     }
   }, []);
 
-  // Callback when loops start (for lyrics sync)
   const handleLoopsStarted = React.useCallback(
     (startTime: number, context: AudioContext) => {
       setLoopsStartTime(startTime);
@@ -148,20 +132,15 @@ export default function Experience({ galleryImages }: ExperienceProps) {
     setIntroDuration(d);
   }, []);
 
-  // Watch for menu mount to start transition
   useGSAP(() => {
     if (menuMounted && masterTimeline.current) {
-      // Resume timeline from paused state once menu is presumably mounted
-      // We use a small delay or rAF to ensure DOM is ready if needed,
-      // but typically useGSAP runs after render commit.
       masterTimeline.current.play();
     }
   }, [menuMounted]);
 
-  // Data
+  // Derived
   const activeLetter = letters.find((l) => l.id === activeLetterId) || null;
 
-  // Handle Start (Click or Enter)
   useEffect(() => {
     if (started) return;
 
@@ -185,18 +164,17 @@ export default function Experience({ galleryImages }: ExperienceProps) {
     };
   }, [started]);
 
-  // Shortcut to Skip Intro
+  // Skip intro shortcut (Shift+J)
   useEffect(() => {
-    if (!started) return; // Disable skip before start
+    if (!started) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.shiftKey && (e.key === "J" || e.key === "j")) {
         if (!introComplete && masterTimeline.current) {
-          // Manually trigger states that would be skipped by progress(1)
           setShowTitleScreen(true);
           setShouldPlayLoops(true);
 
-          masterTimeline.current.progress(1); // Jump to end
+          masterTimeline.current.progress(1);
         }
       }
     };
@@ -204,20 +182,14 @@ export default function Experience({ galleryImages }: ExperienceProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [introComplete, started]);
 
+  // Phase 1: Intro text sequence
   useGSAP(
     () => {
-      // Don't wait for introDuration (allow default flow if 0/loading)
       if (!started) return;
 
-      // Check for mobile
-
-      // const isMobile = window.matchMedia("(max-width: 768px)").matches;
-
-      // Desktop & Mobile: Run Intro Sequence
       const tl = gsap.timeline({
         onComplete: () => {
           setIntroComplete(true);
-          // Enable interaction with menu
           if (menuRef.current) {
             menuRef.current.style.pointerEvents = "auto";
           }
@@ -229,7 +201,6 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       const introEl = introRef.current!;
       const textEl = introEl.querySelector(".intro-text");
 
-      // Initial Visibility
       gsap.set(introEl, {
         autoAlpha: 1,
         backgroundColor: "#000000",
@@ -237,16 +208,12 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       });
       gsap.set(textEl, { opacity: 1, text: "", filter: "blur(0px)", scale: 1 });
 
-      // Ensure Menu is hidden initially (prevent flash)
       if (menuRef.current) {
         gsap.set(menuRef.current, { autoAlpha: 0 });
       }
 
-      // --- PHASE 1: Text Sequence (Synced to Audio) ---
-      // We create a nested timeline for the text sequence so we can scale it
       const textTl = gsap.timeline();
 
-      // Fade out Start Overlay
       if (startOverlayRef.current) {
         textTl.to(startOverlayRef.current, {
           opacity: 0,
@@ -258,13 +225,9 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         });
       }
 
-      // Intro Text Sequence
       if (!SKIP_INTRO) {
-        // Add text steps to nested timeline
         INTRO_TEXTS.forEach((text) => {
-          // Special handling for "Today's Valentine's Day."
           if (text === "Today's Valentine's Day.") {
-            // 1. Type In "Today's Valentine's Day."
             textTl.to(textEl, {
               text: { value: text, delimiter: "" },
               duration: text.length * 0.08,
@@ -282,18 +245,15 @@ export default function Experience({ galleryImages }: ExperienceProps) {
               },
             });
 
-            // 2. Short Pause (0.6s - half of normal 1.2s)
             textTl.to({}, { duration: 0.6 });
 
-            // 3. Backspace "Valentine's Day."
-            // Target: "Today's " (length 8)
             const fullStr = "Today's Valentine's Day.";
             const targetStr = "Today's ";
             const backspaceObj = { len: fullStr.length };
 
             textTl.to(backspaceObj, {
               len: targetStr.length,
-              duration: (fullStr.length - targetStr.length) * 0.05, // Fast backspace
+              duration: (fullStr.length - targetStr.length) * 0.05,
               ease: "none",
               onUpdate: () => {
                 if (textEl) {
@@ -306,7 +266,6 @@ export default function Experience({ galleryImages }: ExperienceProps) {
               },
             });
 
-            // 4. Type "your birthday."
             const finalText = "Today's your birthday.";
             textTl.to(textEl, {
               text: { value: finalText, delimiter: "" },
@@ -321,37 +280,30 @@ export default function Experience({ galleryImages }: ExperienceProps) {
                 }
               },
               onStart: function () {
-                // Initialize _prevLen to current length so we only blip on new chars
                 this._prevLen = targetStr.length;
               },
             });
 
-            // 5. Normal Pause
             textTl.to({}, { duration: 1.2 });
 
-            // 6. Fade Out
             textTl.to(textEl, {
               opacity: 0,
               duration: 1,
               ease: "power2.in",
             });
 
-            // Reset
             textTl.set(textEl, { text: "", opacity: 1 });
             textTl.to({}, { duration: 0.5 });
 
-            return; // Skip the standard loop for this item
+            return;
           }
 
-          // STANDARD LOGIC for all other texts
-          // Type In
           textTl.to(textEl, {
             text: { value: text, delimiter: "" },
-            duration: text.length * 0.08, // Slow typing speed
+            duration: text.length * 0.08,
             ease: "none",
             onUpdate: function () {
               const currentText = this.targets()[0].textContent;
-              // Simple heuristic: if text grew, play sound
               const prevLen = this._prevLen || 0;
               if (currentText.length > prevLen) {
                 playSfx("blip");
@@ -363,28 +315,22 @@ export default function Experience({ galleryImages }: ExperienceProps) {
             },
           });
 
-          // Pause
           textTl.to({}, { duration: 1.2 });
 
-          // Fade Out (Cinematic)
           textTl.to(textEl, {
             opacity: 0,
             duration: 1,
             ease: "power2.in",
           });
 
-          // Reset for next (Clear text, reset opacity)
           textTl.set(textEl, { text: "", opacity: 1 });
-          // Slight pause before next
           textTl.to({}, { duration: 0.5 });
         });
       }
 
-      // Add nested timeline to master
       tl.add(textTl);
 
-      // --- WAIT FOR AUDIO GATE ---
-      // If audio is LONGER than text, we pause here until audio finishes.
+      // Pause if audio outlasts the text sequence
       tl.call(() => {
         if (!audioIntroCompleteRef.current) {
           console.log("Timeline pausing for audio completion...");
@@ -394,41 +340,30 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         }
       });
 
-      // Phase 2: Game-like Title Screen (Always Runs)
-
-      // Ensure Text is gone (in case we skipped or just finished)
+      // Phase 2: Title screen entrance
       tl.set(textEl, { display: "none" });
 
-      // Reveal Title Screen Wrapper (it's persistent now)
       if (titleScreenWrapperRef.current) {
         tl.set(titleScreenWrapperRef.current, { display: "block", opacity: 1 });
       }
 
-      // Show Title Screen Component (via State)
-      // This mounts the child component, triggering its internal entrance animation
       tl.call(() => setShowTitleScreen(true));
-
-      // TRIGGER LOOPS HERE: Title screen is now active/visible
       tl.call(() => setShouldPlayLoops(true));
 
-      // Fade out Intro Black BG to reveal Stars (concurrent with Title Screen entrance)
-      // Delayed by 2.5s to let "Happy Birthday" text appear on black first
-      // NOTE: This now runs ONLY after audio gate is passed (resumed)
       tl.to(
         introEl,
         { opacity: 0, duration: 2, ease: "power2.inOut" },
         "+=0.5",
       );
 
-      // Pause Timeline and wait for User Interaction (Start Button)
       tl.addPause();
     },
     { scope: containerRef, dependencies: [started, introDuration] },
   );
 
+  // Phase 3: Title <-> Gallery warp transitions
   useGSAP(
     () => {
-      // Don't run this if we are interacting with the menu
       if (menuMounted) return;
 
       if (!titleScreenWrapperRef.current) return;
@@ -436,23 +371,19 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       const tl = gsap.timeline();
 
       if (showGallery) {
-        // --- FORWARD: Title -> Gallery ---
-
-        // 1. Fade Out Title Screen
         tl.to(titleScreenWrapperRef.current, {
           opacity: 0,
           duration: 0.8,
           ease: "power2.inOut",
         });
 
-        // 2. Warp Starfield (Accelerate)
         const speedProxy = { val: starfieldSpeedRef.current || 0 };
         tl.call(() => playSfx("warp"));
 
         tl.to(
           speedProxy,
           {
-            val: 180, // High speed
+            val: 180,
             duration: 1.0,
             ease: "power3.in",
             onUpdate: () => {
@@ -462,9 +393,8 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           "<",
         );
 
-        // 3. Decelerate (Arrive at Gallery)
         tl.to(speedProxy, {
-          val: 0, // Stop for gallery
+          val: 0,
           duration: 1.5,
           ease: "power3.out",
           onUpdate: () => {
@@ -472,24 +402,17 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           },
         });
 
-        // 4. Cleanup Title Screen & Stop Vocals
-        // Triggered after fade out is visually complete
         tl.call(() => setShowTitleScreen(false));
         tl.set(titleScreenWrapperRef.current, { display: "none" });
       } else if (hasSeenTitleIntro && !showGallery && !menuMounted) {
-        // --- BACKWARD: Gallery -> Title ---
-        // (Only if we've seen intro, are not in gallery, and not in menu)
-
-        // 1. Prepare Title Screen
         tl.call(() => setShowTitleScreen(true));
         tl.set(titleScreenWrapperRef.current, { display: "block", opacity: 0 });
 
-        // 2. Reverse Warp
         const speedProxy = { val: starfieldSpeedRef.current || 0 };
         tl.call(() => playSfx("warp"));
 
         tl.to(speedProxy, {
-          val: -150, // Reverse speed
+          val: -150,
           duration: 0.8,
           ease: "expo.in",
           onUpdate: () => {
@@ -497,14 +420,12 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           },
         });
 
-        // 3. Fade In Title Screen
         tl.to(titleScreenWrapperRef.current, {
           opacity: 1,
           duration: 1.0,
           ease: "power2.out",
         });
 
-        // 4. Brake to stop
         tl.to(
           speedProxy,
           {
@@ -522,7 +443,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
     { scope: containerRef, dependencies: [showGallery] },
   );
 
-  // New Effect: Handle Transition Sequence when Menu Mounts OR Unmounts
+  // Phase 4: Title <-> Letters menu transitions
   useGSAP(
     () => {
       if (!menuRef.current || !titleScreenWrapperRef.current) return;
@@ -530,59 +451,49 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       const tl = gsap.timeline();
 
       if (menuMounted) {
-        // --- FORWARD: Title -> Menu ---
-        // 1. Prepare Main Menu
         gsap.set(introRef.current, { autoAlpha: 0, display: "none" });
 
-        // 2. Fade Out Title Screen (Foreground)
         tl.to(titleScreenWrapperRef.current, {
           opacity: 0,
           duration: 0.8,
           ease: "power2.inOut",
         });
 
-        // 3. Starfield Acceleration (Travel Phase)
         const speedProxy = { val: starfieldSpeedRef.current || 0 };
         tl.call(() => playSfx("warp"));
 
         tl.to(
           speedProxy,
           {
-            val: 180, // Much faster (from 120 -> 180)
-            duration: 1.0, // Shorter buildup (from 1.8 -> 1.0)
-            ease: "power3.in", // Sharp acceleration
+            val: 180,
+            duration: 1.0,
+            ease: "power3.in",
             onUpdate: () => {
               starfieldSpeedRef.current = speedProxy.val;
             },
           },
-          "<", // Overlap completely with fade out (was <0.1)
+          "<",
         );
 
-        // 4. Starfield Deceleration (Arrival Phase)
         tl.to(speedProxy, {
           val: 0,
-          duration: 1.5, // Faster braking
+          duration: 1.5,
           ease: "power3.out",
           onUpdate: () => {
             starfieldSpeedRef.current = speedProxy.val;
           },
         });
 
-        // 5. Main Menu Entry (Synchronized with Braking)
         const menuItemWrappers =
           menuRef.current.querySelectorAll(".menu-item-wrapper");
         const headerContent = menuRef.current.querySelectorAll("header > *");
         const fadeMasks = menuRef.current.querySelectorAll(".fade-mask");
-        // const instructionText =
-        //   menuRef.current.querySelector(".instruction-text");
 
         const allMenuContent = [
           ...Array.from(headerContent),
-          // instructionText,
           ...Array.from(menuItemWrappers),
         ];
 
-        // FIX: Reset properties to resting state so .from() works correctly on re-entry
         gsap.set(allMenuContent, { y: 0, opacity: 1 });
         gsap.set(fadeMasks, { opacity: 1 });
 
@@ -593,11 +504,11 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           {
             y: "20vh",
             opacity: 0,
-            duration: 1.5, // Matches deceleration
+            duration: 1.5,
             ease: "power3.out",
             stagger: 0.1,
           },
-          "<", // Starts exactly when deceleration starts
+          "<",
         );
 
         tl.from(
@@ -610,45 +521,35 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           "<",
         );
 
-        // 6. Cleanup
         tl.call(() => setShowTitleScreen(false));
         tl.set(titleScreenWrapperRef.current, { display: "none" });
-        tl.call(() => setMenuInteractive(true)); // Allow menu to control stars now
+        tl.call(() => setMenuInteractive(true));
 
-        // Fade In Back Button (after menu entry is largely done)
         const backButton = menuRef.current.querySelector(".back-button");
         if (backButton) {
           tl.to(backButton, { opacity: 1, duration: 1, ease: "power2.out" });
         }
 
-        // 7. Music (Handled by MusicManager mostly now)
-        // But we might want to ensure volume is up?
         tl.call(
           () => {
-            // We don't set bgMusicSrc anymore for global loop
             setAudioVolume(0.5);
           },
           undefined,
           "<",
         );
       } else {
-        // --- BACKWARD: Menu -> Title ---
-        // Check if Menu is visible to avoid initial run
         if (gsap.getProperty(menuRef.current, "opacity") === 0) return;
 
         tl.call(() => setMenuInteractive(false));
 
-        // Hide Back Button immediately
         const backButton = menuRef.current.querySelector(".back-button");
         if (backButton) {
           tl.to(backButton, { opacity: 0, duration: 0.3, ease: "power2.out" });
         }
 
-        // Prepare Title Screen
         tl.call(() => setShowTitleScreen(true));
         tl.set(titleScreenWrapperRef.current, { display: "block", opacity: 0 });
 
-        // Fade Out Menu
         const menuItemWrappers =
           menuRef.current.querySelectorAll(".menu-item-wrapper");
         const headerContent = menuRef.current.querySelectorAll("header > *");
@@ -676,14 +577,13 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           "<",
         );
 
-        // Reverse Warp
         const speedProxy = { val: starfieldSpeedRef.current || 0 };
         tl.call(() => playSfx("warp"));
 
         tl.to(
           speedProxy,
           {
-            val: -150, // Reverse speed
+            val: -150,
             duration: 0.8,
             ease: "expo.in",
             onUpdate: () => {
@@ -693,14 +593,12 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           "<",
         );
 
-        // Fade In Title Screen
         tl.to(titleScreenWrapperRef.current, {
           opacity: 1,
           duration: 1.0,
           ease: "power2.out",
         });
 
-        // Brake to stop
         tl.to(
           speedProxy,
           {
@@ -714,30 +612,24 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           "<",
         );
 
-        // Cleanup Menu
         tl.set(menuRef.current, { autoAlpha: 0 });
 
-        // Ensure volume matches
         tl.call(() => setAudioVolume(0.5));
       }
     },
     { scope: containerRef, dependencies: [menuMounted] },
   );
 
-  // Handlers to manage audio ducking
+  // Letter open / close handlers
   const handleLetterSelect = (id: string) => {
-    // Handle Surprise Letter
     if (id === "surprise") {
       if (!isSurpriseUnlocked) {
-        // Optional: Play a "locked" sound effect here
         return;
       }
 
       playSfx("open");
 
-      // White Fade Out Sequence
       if (transitionOverlayRef.current) {
-        // Fade out music gradually
         setBgmFadeDuration(3.0);
         setAudioVolume(0);
 
@@ -751,11 +643,9 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           ease: "power2.inOut",
           onComplete: () => {
             setShowSurprise(true);
-            setMenuInteractive(false); // Disable menu interaction
-            // Stop loops entirely after fade is complete/during transition
+            setMenuInteractive(false);
             setShouldPlayLoops(false);
 
-            // Hide the overlay shortly after SurpriseReveal mounts (z-300) to prevent it being visible when SurpriseReveal fades out later
             gsap.delayedCall(0.1, () => {
               if (transitionOverlayRef.current)
                 gsap.set(transitionOverlayRef.current, { autoAlpha: 0 });
@@ -766,11 +656,10 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       return;
     }
 
-    // Handle Normal Letter
     playSfx("open");
     setActiveLetterId(id);
     setBgmFadeDuration(0.5);
-    setAudioVolume(0.2); // Duck volume
+    setAudioVolume(0.2);
   };
 
   const handleLetterDismiss = () => {
@@ -781,7 +670,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
     playSfx("close");
     setActiveLetterId(null);
     setBgmFadeDuration(0.5);
-    setAudioVolume(0.5); // Restore volume
+    setAudioVolume(0.5);
   };
 
   return (
@@ -813,14 +702,11 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
       <Intro ref={introRef} />
 
-      {/* Background Music Manager */}
       <MusicManager
         started={started}
-        textDuration={calculateTextDuration()} // Pass duration directly
+        textDuration={calculateTextDuration()}
         playLoops={shouldPlayLoops}
-        inTitleScreen={showTitleScreen} // Vocal stems active only when TitleScreen is visible (and not hidden by menu)
-        // Note: showTitleScreen is true during Menu->Title transition, so vocals fade in.
-        // When Menu is mounted, showTitleScreen becomes false at end of transition.
+        inTitleScreen={showTitleScreen}
         isMenuMounted={menuMounted}
         volume={audioVolume}
         fadeDuration={bgmFadeDuration}
@@ -829,22 +715,21 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         onLoopsStarted={handleLoopsStarted}
       />
 
-      {/* Title Screen Layer - Persistent Wrapper */}
       <div
         ref={titleScreenWrapperRef}
         className="fixed inset-0 z-55 pointer-events-auto"
-        style={{ display: "none" }} // Hidden by default, controlled by GSAP
+        style={{ display: "none" }}
       >
         {showTitleScreen && (
           <TitleScreen
             onStart={handleTitleScreenStart}
             onGalleryOpen={() => {
               setShowGallery(true);
-              setHasSeenTitleIntro(true); // Also set if they go to gallery first
+              setHasSeenTitleIntro(true);
             }}
             onExtraWorksOpen={() => {
               setShowExtraWorks(true);
-              setHasSeenTitleIntro(true); // Treat as "seen" so we don't re-run intro animation
+              setHasSeenTitleIntro(true);
             }}
             onCreditsOpen={() => setShowCredits(true)}
             skipIntro={hasSeenTitleIntro}
@@ -873,9 +758,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       <LetterView
         letter={activeLetter}
         onDismiss={handleLetterDismiss}
-        onCloseComplete={() => {
-          // Optional cleanup
-        }}
+        onCloseComplete={() => {}}
       />
 
       {showGallery && (
@@ -889,7 +772,6 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         onClose={() => setShowExtraWorks(false)}
       />
 
-      {/* AudioControl ONLY for Letter Voiceovers (if any) or extra SFX, NOT BGM */}
       {activeLetter && (
         <AudioControl
           src={`/audio/${activeLetter.id}.mp3`}
@@ -910,7 +792,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
               prev.includes("surprise") ? prev : [...prev, "surprise"],
             );
             setShowSurprise(false);
-            setMenuInteractive(true); // Re-enable menu interaction
+            setMenuInteractive(true);
             gsap.set(transitionOverlayRef.current, {
               display: "none",
               opacity: 0,

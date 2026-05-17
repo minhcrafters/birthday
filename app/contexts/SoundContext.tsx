@@ -25,57 +25,62 @@ interface SoundContextType {
 
 const SoundContext = createContext<SoundContextType | null>(null);
 
-// Map sound names to files
 const SFX_MAP: Record<SoundName, string> = {
   click: "/audio/click.wav",
-  hover: "/audio/test2.mp3", // Placeholder
-  warp: "/audio/test3.mp3", // Placeholder
-  open: "/audio/test1.mp3", // Reuse click for now
-  close: "/audio/test2.mp3", // Reuse hover for now
+  hover: "/audio/test2.mp3",
+  warp: "/audio/test3.mp3",
+  open: "/audio/test1.mp3",
+  close: "/audio/test2.mp3",
   blip: "/audio/blip.wav",
   blip_alt: "/audio/blip_alt.wav",
 };
+
+const BLIP_VOLUME = 0.15;
+const DEFAULT_VOLUME = 0.5;
+const BLIP_POOL_SIZE = 8;
+const DEFAULT_POOL_SIZE = 3;
 
 export function SoundProvider({ children }: { children: React.ReactNode }) {
   const [isMuted, setIsMuted] = useState(false);
   const audioPool = useRef<Record<string, HTMLAudioElement[]>>({});
 
   useEffect(() => {
-    // Preload sounds
-    Object.entries(SFX_MAP).forEach(([name, src]) => {
-      // Determine pool size based on sound type
-      // Blips need higher concurrency for rapid typing
-      const poolSize = name === "blip" ? 8 : 3;
+    for (const [name, src] of Object.entries(SFX_MAP)) {
+      const poolSize = name === "blip" ? BLIP_POOL_SIZE : DEFAULT_POOL_SIZE;
+      const volume = name === "blip" ? BLIP_VOLUME : DEFAULT_VOLUME;
 
       audioPool.current[name] = Array.from(
         { length: poolSize },
         () => new Audio(src),
       );
 
-      audioPool.current[name].forEach((audio) => {
-        audio.volume = name === "blip" ? 0.15 : 0.5; // Lower volume for repetitive blips
+      for (const audio of audioPool.current[name]) {
+        audio.volume = volume;
         audio.preload = "auto";
-      });
-    });
+      }
+    }
   }, []);
 
   const playSfx = (name: SoundName) => {
-    if (isMuted) return;
+    if (isMuted) {
+      return;
+    }
 
     const pool = audioPool.current[name];
-    if (!pool) return;
+    if (!pool) {
+      return;
+    }
 
-    // Find a free player or just use the first one and reset it
     const availablePlayer = pool.find((p) => p.paused) || pool[0];
-
     availablePlayer.currentTime = 0;
     availablePlayer.play().catch((err) => {
-      // Audio context might be locked, expected behavior before interaction
       console.warn("Audio play failed", err);
     });
   };
 
-  const toggleMute = () => setIsMuted((prev) => !prev);
+  const toggleMute = () => {
+    setIsMuted((prev) => !prev);
+  };
 
   return (
     <SoundContext.Provider value={{ playSfx, isMuted, toggleMute }}>

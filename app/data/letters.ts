@@ -3,10 +3,9 @@ export interface LetterData {
   nickname: string;
   imageSrc?: string;
   bgmSrc?: string;
-  content?: string[]; // Kept for compatibility with SurpriseReveal (slideshow mode)
+  content?: string[];
 }
 
-// Order matters for the list
 export const letters: LetterData[] = [
   {
     id: "ella",

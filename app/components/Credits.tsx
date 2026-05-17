@@ -12,18 +12,18 @@ const Credits = ({ onClose }: CreditsProps) => {
 
   useGSAP(
     () => {
-      if (!containerRef.current || !contentRef.current) return;
+      if (!containerRef.current || !contentRef.current) {
+        return;
+      }
 
       const tl = gsap.timeline();
 
-      // Fade in background
       tl.to(containerRef.current, {
         opacity: 1,
         duration: 0.5,
         ease: "power2.out",
       });
 
-      // Slide up content
       tl.fromTo(
         contentRef.current,
         { y: 20, opacity: 0 },
@@ -35,7 +35,9 @@ const Credits = ({ onClose }: CreditsProps) => {
   );
 
   const handleClose = () => {
-    if (!containerRef.current || !contentRef.current) return;
+    if (!containerRef.current || !contentRef.current) {
+      return;
+    }
 
     const tl = gsap.timeline({
       onComplete: onClose,
@@ -78,7 +80,6 @@ const Credits = ({ onClose }: CreditsProps) => {
         </button>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-24 font-serif text-sm md:text-base tracking-widest leading-loose uppercase text-center md:text-left">
-          {/* Left Column */}
           <div className="flex flex-col gap-6 md:items-end md:text-right">
             <div>
               <span className="block text-xs text-gray-500 mb-1 tracking-[0.2em]">
@@ -106,7 +107,6 @@ const Credits = ({ onClose }: CreditsProps) => {
             </div>
           </div>
 
-          {/* Right Column */}
           <div className="flex flex-col gap-2 md:items-start md:text-left">
             <span className="block text-xs text-gray-500 mb-4 tracking-[0.2em]">
               Special Thanks To

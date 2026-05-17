@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -28,34 +28,36 @@ export default function Snoofy({
 
   useEffect(() => {
     if (!isOpen) return;
-    const handleResize = () => {
+
+    const rescale = () => {
       if (!textRef.current || !contentWrapperRef.current) return;
       gsap.set(textRef.current, { clearProps: "scale" });
-      const availableHeight = contentWrapperRef.current.clientHeight;
-      const contentHeight = textRef.current.scrollHeight;
-      const availableWidth = contentWrapperRef.current.clientWidth;
-      const contentWidth = textRef.current.scrollWidth;
-      const scaleH = availableHeight / contentHeight;
-      const scaleW = availableWidth / contentWidth;
+      const scaleH =
+        contentWrapperRef.current.clientHeight / textRef.current.scrollHeight;
+      const scaleW =
+        contentWrapperRef.current.clientWidth / textRef.current.scrollWidth;
       const scale = Math.min(1, scaleH * 0.9, scaleW * 0.95);
       gsap.set(textRef.current, {
-        scale: scale,
+        scale,
         transformOrigin: "center center",
       });
     };
-    const timer = setTimeout(handleResize, 10);
-    window.addEventListener("resize", handleResize);
+
+    const timer = setTimeout(rescale, 10);
+    window.addEventListener("resize", rescale);
     return () => {
-      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("resize", rescale);
       clearTimeout(timer);
     };
   }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onDismiss();
     };
+
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onDismiss]);
@@ -75,63 +77,70 @@ export default function Snoofy({
         );
 
         const paragraphs = textRef.current.querySelectorAll("p, .letter-video");
-        // animate only the profile image (leave the video unanimated)
-        const media = textRef.current.querySelector(".letter-image");
+        const image = textRef.current.querySelector(".letter-image");
 
         tl.fromTo(
           paragraphs,
           { y: 20, opacity: 0 },
-          { y: 0, opacity: 1, stagger: 0.1, duration: 0.8, ease: "power3.out" },
+          {
+            y: 0,
+            opacity: 1,
+            stagger: 0.1,
+            duration: 0.8,
+            ease: "power3.out",
+          },
           "-=0.3",
         );
-        if (media) {
+
+        if (image) {
           tl.fromTo(
-            media,
+            image,
             { x: 50, opacity: 0, rotate: 5 },
             { x: 0, opacity: 1, rotate: 3, duration: 1, ease: "power3.out" },
             "-=0.8",
           );
         }
       } else if (!isOpen && containerRef.current && textRef.current) {
-        const isVisible =
+        const visible =
           Number(gsap.getProperty(containerRef.current, "opacity")) > 0;
-        if (isVisible) {
-          if (timelineRef.current) timelineRef.current.kill();
-          const tl = gsap.timeline({
-            onComplete: () => {
-              gsap.set(containerRef.current, { zIndex: -1, autoAlpha: 0 });
-              if (onCloseComplete) onCloseComplete();
-            },
+        if (!visible) return;
+
+        if (timelineRef.current) timelineRef.current.kill();
+        const tl = gsap.timeline({
+          onComplete: () => {
+            gsap.set(containerRef.current, { zIndex: -1, autoAlpha: 0 });
+            onCloseComplete?.();
+          },
+        });
+        timelineRef.current = tl;
+
+        const paragraphs = textRef.current.querySelectorAll("p, .letter-video");
+        const image = textRef.current.querySelector(".letter-image");
+
+        if (image) {
+          tl.to(image, {
+            x: 20,
+            opacity: 0,
+            duration: 0.5,
+            ease: "power2.in",
           });
-          timelineRef.current = tl;
-
-          const paragraphs =
-            textRef.current.querySelectorAll("p, .letter-video");
-          const media = textRef.current.querySelector(".letter-image");
-
-          if (media)
-            tl.to(media, {
-              x: 20,
-              opacity: 0,
-              duration: 0.5,
-              ease: "power2.in",
-            });
-          tl.to(
-            paragraphs,
-            {
-              y: -10,
-              opacity: 0,
-              stagger: 0.05,
-              duration: 0.4,
-              ease: "power2.in",
-            },
-            "<",
-          ).to(
-            containerRef.current,
-            { opacity: 0, duration: 0.4, ease: "power2.in" },
-            "-=0.2",
-          );
         }
+
+        tl.to(
+          paragraphs,
+          {
+            y: -10,
+            opacity: 0,
+            stagger: 0.05,
+            duration: 0.4,
+            ease: "power2.in",
+          },
+          "<",
+        ).to(
+          containerRef.current,
+          { opacity: 0, duration: 0.4, ease: "power2.in" },
+          "-=0.2",
+        );
       }
     },
     { dependencies: [isOpen] },

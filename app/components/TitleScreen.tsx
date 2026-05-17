@@ -28,26 +28,21 @@ const TitleScreen = ({
 
   useGSAP(
     () => {
-      // Main Cinematic Sequence
-      const tl = gsap.timeline();
-
       if (skipIntro) {
-        // Skip animation: Set to final state immediately
         gsap.set(containerRef.current, { opacity: 1 });
         gsap.set(titleRef.current, { scale: 1, y: 0, opacity: 1 });
         gsap.set(btnGroupRef.current, { opacity: 1, y: 0 });
         return;
       }
 
-      // 0. Initial Setup
-      // Fade in container first
+      const tl = gsap.timeline();
+
       tl.to(containerRef.current, {
         opacity: 1,
         duration: 0.5,
         ease: "power2.inOut",
       });
 
-      // Calculate distance to center the title
       let centerOffset = 0;
       if (titleRef.current) {
         const titleRect = titleRef.current.getBoundingClientRect();
@@ -56,41 +51,37 @@ const TitleScreen = ({
         centerOffset = viewportCenter - titleCenter;
       }
 
-      // 1. "Happy Birthday!" appears BIG at center
       tl.fromTo(
         titleRef.current,
         {
-          scale: 1.5, // Big
-          y: centerOffset, // Dynamically centered
+          scale: 1.5,
+          y: centerOffset,
           opacity: 0,
         },
         {
           scale: 1.5,
           y: centerOffset,
           opacity: 1,
-          duration: 1.5, // Shorter duration
+          duration: 1.5,
           ease: "power2.out",
         },
-        "<", // Start immediately with container fade
+        "<",
       );
 
-      // Hold for a moment to let the user read it
-      tl.to({}, { duration: 1.0 }); // Shorter hold
+      tl.to({}, { duration: 1.0 });
 
-      // 2. Scale down and move up to title position
       tl.to(titleRef.current, {
         scale: 1,
-        y: 0, // Back to layout position
+        y: 0,
         duration: 2,
-        ease: "power3.inOut", // Cinematic slow move
+        ease: "power3.inOut",
       });
 
-      // 3. Reveal Buttons (Slowly)
       tl.fromTo(
         btnGroupRef.current,
         { opacity: 0, y: 20 },
         { opacity: 1, y: 0, duration: 1, ease: "power2.out" },
-        "-=0.5", // Start slightly before title finishes settling
+        "-=0.5",
       );
     },
     { scope: containerRef },
@@ -101,21 +92,15 @@ const TitleScreen = ({
       ref={containerRef}
       className="absolute inset-0 z-30 flex flex-col items-center justify-center text-white opacity-0"
     >
-      {/* Main Content Container */}
       <div className="relative z-10 flex flex-col items-center gap-16 md:gap-24">
-        {/* Title */}
         <div ref={titleRef} className="text-center space-y-4">
           <h1 className="text-4xl md:text-8xl font-serif font-bold tracking-[0.15em] uppercase text-white drop-shadow-2xl">
             Happy
             <br />
             Birthday!
           </h1>
-          {/*<p className="text-xs md:text-sm font-serif tracking-[0.8em] text-gray-500 uppercase">
-            Shiori Edition
-          </p>*/}
         </div>
 
-        {/* Menu Buttons (Revealed later) */}
         <div ref={btnGroupRef} className="flex flex-col gap-6 min-w-60">
           <button
             onClick={onStart}
@@ -171,7 +156,6 @@ const TitleScreen = ({
         </div>
       </div>
 
-      {/* Lyrics Display (replaces copyright text) */}
       <LyricsDisplay
         loopsStartTime={loopsStartTime}
         audioContext={audioContext}

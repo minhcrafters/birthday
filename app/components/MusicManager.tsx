@@ -3,12 +3,12 @@ import gsap from "gsap";
 
 interface MusicManagerProps {
   started: boolean;
-  textDuration?: number; // Prop for calculating offset
+  textDuration?: number;
   playLoops: boolean;
   inTitleScreen: boolean;
-  isMenuMounted?: boolean; // New prop to handle transition fade out
-  volume: number; // 0 to 1
-  fadeDuration?: number; // Duration for volume changes
+  isMenuMounted?: boolean;
+  volume: number;
+  fadeDuration?: number;
   onIntroEnd: () => void;
   onDurationLoaded?: (duration: number) => void;
   onLoopsStarted?: (loopsStartTime: number, audioContext: AudioContext) => void;
@@ -26,7 +26,6 @@ export default function MusicManager({
   onDurationLoaded,
   onLoopsStarted,
 }: MusicManagerProps) {
-  // Web Audio API refs
   const contextRef = useRef<AudioContext | null>(null);
 
   const gainIntroRef = useRef<GainNode | null>(null);
@@ -54,24 +53,20 @@ export default function MusicManager({
   const introTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [introDuration, setIntroDuration] = useState(0);
-  // Replace state with a ref to avoid calling setState synchronously inside effects
   const hasIntroTransitionHappenedRef = useRef<boolean>(false);
 
-  // 1. Initialization (Load Buffers & Setup Context)
+  // Init: create AudioContext, load buffers
   useEffect(() => {
     const initAudio = async () => {
       try {
-        // Create Context
         const AudioContextClass = window.AudioContext;
         const ctx = new AudioContextClass();
         contextRef.current = ctx;
 
-        // Unlock AudioContext on first user interaction (Mobile/Autoplay fix)
         const unlock = () => {
           if (ctx.state === "suspended") {
             ctx.resume();
           }
-          // Remove listeners once resumed
           if (ctx.state === "running") {
             window.removeEventListener("click", unlock);
             window.removeEventListener("touchstart", unlock);
@@ -83,12 +78,10 @@ export default function MusicManager({
         window.addEventListener("touchstart", unlock);
         window.addEventListener("keydown", unlock);
 
-        // Create Gains
         const gIntro = ctx.createGain();
         const gAcc = ctx.createGain();
         const gVocals = ctx.createGain();
 
-        // Initialize volumes
         gIntro.gain.value = 0;
         gAcc.gain.value = 0;
         gVocals.gain.value = 0;
@@ -101,7 +94,6 @@ export default function MusicManager({
         gainAccRef.current = gAcc;
         gainVocalsRef.current = gVocals;
 
-        // Load Buffers
         const loadBuffer = async (url: string) => {
           const res = await fetch(url);
           const arrayBuffer = await res.arrayBuffer();
@@ -134,7 +126,7 @@ export default function MusicManager({
     };
   }, []);
 
-  // 2. Handle Start (Schedule Intro AND Loops)
+  // Schedule intro + loops together
   useEffect(() => {
     if (
       started &&
@@ -147,7 +139,6 @@ export default function MusicManager({
 
       const ctx = contextRef.current;
 
-      // Resume Web Audio Context
       if (ctx.state === "suspended") {
         ctx.resume().catch(console.error);
       }
@@ -155,10 +146,9 @@ export default function MusicManager({
       const { intro, acc, vocals } = buffersRef.current;
       if (!intro || !acc || !vocals) return;
 
-      // Calculate Timeline
       const delay = Math.max(0, textDuration - intro.duration);
       const now = ctx.currentTime;
-      const introStartTime = now + delay + 0.1; // small buffer
+      const introStartTime = now + delay + 0.1;
       const loopsStartTime = introStartTime + intro.duration;
 
       scheduledLoopsStartTimeRef.current = loopsStartTime;
@@ -167,36 +157,30 @@ export default function MusicManager({
         `Scheduling Audio: Intro at ${introStartTime}, Loops at ${loopsStartTime} (Delay: ${delay})`,
       );
 
-      // --- SETUP INTRO ---
       const srcIntro = ctx.createBufferSource();
       srcIntro.buffer = intro;
       srcIntro.connect(gainIntroRef.current!);
       srcIntro.start(introStartTime);
       sourceIntroRef.current = srcIntro;
 
-      // Use onended for reliable completion handling (works in background tabs)
       srcIntro.onended = () => {
         onIntroEnd();
       };
 
-      // Fade In Intro (Covering the entire intro duration)
-      // We use GSAP for a smoother, cinematic build-up that spans the whole intro.
       const startDelay = introStartTime - now;
       const gIntro = gainIntroRef.current!;
 
-      // Ensure silence initially
       gIntro.gain.cancelScheduledValues(now);
       gIntro.gain.setValueAtTime(0, now);
 
       gsap.to(gIntro.gain, {
         value: volume,
-        duration: intro.duration, // Fade in over the full length
-        ease: "power2.in", // Cinematic build-up
+        duration: intro.duration,
+        ease: "power2.in",
         delay: startDelay,
         overwrite: true,
       });
 
-      // --- SETUP LOOPS (Gapless Schedule) ---
       const srcAcc = ctx.createBufferSource();
       srcAcc.buffer = acc;
       srcAcc.loop = true;
@@ -211,55 +195,34 @@ export default function MusicManager({
       srcVocals.start(loopsStartTime);
       sourceVocalsRef.current = srcVocals;
 
-      // Initialize Loop Volumes (Scheduled)
-      // We rely on the Volume/Ducking useEffect (Step 4) to manage gain.
-      // Scheduling explicit values here would create a race condition where a scheduled '0'
-      // could override the '0.5' set by the React effect when the Title Screen appears.
-
-      // Notify parent of loop timing for lyrics synchronization
       if (onLoopsStarted) {
         onLoopsStarted(loopsStartTime, ctx);
       }
-
-      // Notify parent when intro is theoretically done
-      // (This is redundant if parent syncs via duration, but good for safety)
-      // const timeToIntroEnd = (loopsStartTime - now) * 1000;
-
-      // introTimeoutRef.current = setTimeout(() => {
-      //   onIntroEnd();
-      // }, timeToIntroEnd);
     }
   }, [
     started,
     isAudioLoaded,
     textDuration,
-    // IMPORTANT: do NOT depend on `volume` here. Changing volume when clicking letters
-    // should only duck/restore gains (effect #4), not reschedule/recreate sources.
     onIntroEnd,
     onDurationLoaded,
     onLoopsStarted,
   ]);
 
-  // 3. Handle Skip / Force Loops
+  // Skip intro -> jump to loops
   useEffect(() => {
-    // If playLoops is true (e.g. Skip Intro pressed), check if we need to force jump.
-
     if (playLoops && hasStartedRef.current && contextRef.current) {
       const ctx = contextRef.current;
       const now = ctx.currentTime;
 
-      // If we are skipping (loops scheduled for future)
       if (scheduledLoopsStartTimeRef.current > now + 0.5) {
         console.log("Skipping Intro Audio - Jumping to Loops");
 
-        // 1. Stop Intro
         if (sourceIntroRef.current) {
           try {
             sourceIntroRef.current.stop();
           } catch (e) {}
         }
 
-        // 2. Cancel previously scheduled loops
         if (sourceAccRef.current) {
           try {
             sourceAccRef.current.stop();
@@ -271,15 +234,12 @@ export default function MusicManager({
           } catch (e) {}
         }
 
-        // 3. Clear timeout
         if (introTimeoutRef.current) {
           clearTimeout(introTimeoutRef.current);
         }
 
-        // 4. Start Loops IMMEDIATELY
         const { acc, vocals } = buffersRef.current;
         if (acc && vocals) {
-          // Acc
           const srcAcc = ctx.createBufferSource();
           srcAcc.buffer = acc;
           srcAcc.loop = true;
@@ -287,7 +247,6 @@ export default function MusicManager({
           srcAcc.start(now);
           sourceAccRef.current = srcAcc;
 
-          // Vocals
           const srcVocals = ctx.createBufferSource();
           srcVocals.buffer = vocals;
           srcVocals.loop = true;
@@ -295,31 +254,24 @@ export default function MusicManager({
           srcVocals.start(now);
           sourceVocalsRef.current = srcVocals;
 
-          // Reset Gains to immediate volume
           gainAccRef.current!.gain.cancelScheduledValues(now);
           gainAccRef.current!.gain.setValueAtTime(volume, now);
 
           gainVocalsRef.current!.gain.cancelScheduledValues(now);
-          // If in title screen, 0->Vol transition happens in effect #4, but ensure base is 0
           gainVocalsRef.current!.gain.setValueAtTime(0, now);
 
-          // Notify parent of loop timing for lyrics synchronization
           if (onLoopsStarted) {
             onLoopsStarted(now, ctx);
           }
         }
 
-        // 5. Fire completion handler immediately
         onIntroEnd();
       }
     }
   }, [playLoops, volume, onIntroEnd, onLoopsStarted]);
 
-  // 4. Volume & Ducking Control
+  // Volume & vocal ducking
   useEffect(() => {
-    const now = contextRef.current?.currentTime || 0;
-
-    // Intro Volume
     if (gainIntroRef.current) {
       gsap.to(gainIntroRef.current.gain, {
         value: volume,
@@ -328,7 +280,6 @@ export default function MusicManager({
       });
     }
 
-    // Loops Volume
     if (gainAccRef.current) {
       gsap.to(gainAccRef.current.gain, {
         value: volume,
@@ -338,25 +289,13 @@ export default function MusicManager({
     }
 
     if (gainVocalsRef.current) {
-      // Vocals are active ONLY if we are in Title Screen AND Menu hasn't started mounting (transitioning out) yet.
       const shouldPlayVocals = inTitleScreen && !isMenuMounted;
       const targetVocalVol = shouldPlayVocals ? volume : 0;
 
-      // Shorter, more natural fade for vocals in/out (seconds).
-      // Keep the initial transition instant so the intro->title cut remains gapless.
       let duration = 2.5;
 
-      // If you want slightly different timing when the menu is mounting,
-      // you can uncomment and tweak the value below.
-      // if (inTitleScreen && isMenuMounted) {
-      //   duration = 0.6;
-      // }
-
-      // Special case: First entry to Title Screen (Intro -> Title transition)
-      // We want this to be instant (Gapless drop) so the vocals hit hard immediately
       if (inTitleScreen && !hasIntroTransitionHappenedRef.current) {
         duration = 0;
-        // Mark as handled using a ref so we don't trigger a React re-render inside this effect
         hasIntroTransitionHappenedRef.current = true;
       }
 
@@ -369,11 +308,9 @@ export default function MusicManager({
     }
   }, [volume, inTitleScreen, isMenuMounted, fadeDuration]);
 
-  // 5. Pause global BGM when an in-letter video plays, and restore when it pauses
   useEffect(() => {
     const onVideoPlay = () => {
       if (!contextRef.current) return;
-      // Duck all music gains quickly
       if (gainIntroRef.current) {
         gsap.to(gainIntroRef.current.gain, {
           value: 0,
@@ -399,7 +336,6 @@ export default function MusicManager({
 
     const onVideoPause = () => {
       if (!contextRef.current) return;
-      // Restore volumes to the same logic used in the volume & ducking effect
       if (gainIntroRef.current) {
         gsap.to(gainIntroRef.current.gain, {
           value: volume,

@@ -1,7 +1,6 @@
-import React, { forwardRef, useLayoutEffect, useRef, useEffect } from "react";
+import React, { forwardRef, useLayoutEffect, useRef } from "react";
 import Image from "next/image";
 import { LetterData } from "../data/letters";
-import gsap from "gsap";
 
 interface LettersListProps {
   letters: LetterData[];
@@ -30,31 +29,55 @@ const Envelope = ({
   isLocked?: boolean;
   onClick: () => void;
 }) => {
+  const cardBaseClasses =
+    "absolute inset-0 border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)]";
+  const cardLockedClasses = "bg-slate-900/20 border-white/5";
+  const cardActiveClasses =
+    "bg-slate-900/50 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]";
+  const cardReadClasses = "border-white/5 bg-slate-900/20";
+
+  const iconBaseClasses =
+    "relative z-10 w-full h-full flex items-center justify-center transition-colors duration-500";
+  const iconLockedClasses = "text-gray-600";
+  const iconActiveClasses = "text-white/80 group-hover:text-white";
+  const iconReadClasses = "text-gray-500";
+
+  const labelBaseClasses =
+    "font-serif tracking-widest uppercase text-xs md:text-sm transition-colors duration-300";
+  const labelLockedClasses = "text-gray-700";
+  const labelActiveClasses = "text-gray-400 group-hover:text-white";
+  const labelReadClasses = "text-gray-600";
+
+  const isSurprise = isLast;
+
   return (
     <button
       onClick={onClick}
       disabled={isLocked}
       className={`group relative flex flex-col items-center justify-center p-6 transition-all duration-500 focus:outline-none w-full ${
-        isLast ? "aspect-2/1 md:aspect-3/1" : "aspect-square"
+        isSurprise ? "aspect-2/1 md:aspect-3/1" : "aspect-square"
       } ${isLocked ? "opacity-60 cursor-not-allowed grayscale" : "hover:scale-105"}`}
     >
-      {/* Glassy Background Card */}
       <div
-        className={`absolute inset-0 border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)] ${
+        className={`${cardBaseClasses} ${
           isLocked
-            ? "bg-slate-900/20 border-white/5"
-            : "bg-slate-900/50 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]"
-        } ${isRead && !isLast ? "border-white/5 bg-slate-900/20" : ""}`}
-      ></div>
+            ? cardLockedClasses
+            : isRead && !isSurprise
+              ? cardReadClasses
+              : cardActiveClasses
+        }`}
+      />
 
-      {/* Envelope Icon (SVG) */}
       <div
-        className={`relative z-10 w-full h-full flex items-center justify-center transition-colors duration-500 ${
-          isLocked ? "text-gray-600" : "text-white/80 group-hover:text-white"
-        } ${isRead && !isLast ? "text-gray-500" : ""}`}
+        className={`${iconBaseClasses} ${
+          isLocked
+            ? iconLockedClasses
+            : isRead && !isSurprise
+              ? iconReadClasses
+              : iconActiveClasses
+        }`}
       >
         {isLocked ? (
-          // Lock Icon
           <svg
             xmlns="http://www.w3.org/2000/svg"
             className="w-1/3 h-1/3"
@@ -70,36 +93,39 @@ const Envelope = ({
             />
           </svg>
         ) : (
-          // Image Envelope
           <Image
-            src={`/images/icons/letter_${isLast ? "purple" : "blue"}_${
+            src={`/images/icons/letter_${isSurprise ? "purple" : "blue"}_${
               isRead ? "open" : "closed"
             }.png`}
             alt="Envelope"
             width={800}
             height={600}
             className={`w-3/4 h-3/4 object-contain drop-shadow-lg transition-transform duration-700 ${
-              isLast ? "group-hover:scale-110" : "group-hover:-translate-y-2"
-            } ${isRead && !isLast ? "opacity-75" : ""}`}
+              isSurprise
+                ? "group-hover:scale-110"
+                : "group-hover:-translate-y-2"
+            } ${isRead && !isSurprise ? "opacity-75" : ""}`}
           />
         )}
 
-        {/* Surprise Letter specific decoration */}
-        {isLast && !isLocked && (
+        {isSurprise && !isLocked && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-full h-full absolute bg-linear-to-r from-transparent via-white/5 to-transparent animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
           </div>
         )}
       </div>
 
-      {/* Nickname Label */}
       <div className="absolute bottom-4 left-0 right-0 text-center z-20">
         <span
-          className={`font-serif tracking-widest uppercase text-xs md:text-sm transition-colors duration-300 ${
-            isLast ? "text-base md:text-lg font-bold" : ""
+          className={`${labelBaseClasses} ${
+            isSurprise ? "text-base md:text-lg font-bold" : ""
           } ${
-            isLocked ? "text-gray-700" : "text-gray-400 group-hover:text-white"
-          } ${isRead && !isLast ? "text-gray-600" : ""}`}
+            isLocked
+              ? labelLockedClasses
+              : isRead && !isSurprise
+                ? labelReadClasses
+                : labelActiveClasses
+          }`}
         >
           {isLocked ? "LOCKED" : letter.nickname}
         </span>
@@ -113,9 +139,7 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
     {
       letters,
       onLetterSelect,
-      onGalleryOpen,
       onBack,
-      visible,
       starfieldSpeedRef,
       controlsStarfield = false,
       readLetterIds = [],
@@ -127,7 +151,6 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
     const lastScrollTopRef = useRef(0);
     const rAFRef = useRef<number | null>(null);
 
-    // Starfield Velocity Logic
     useLayoutEffect(() => {
       const updatePhysics = () => {
         if (!scrollContainerRef.current) return;
@@ -138,7 +161,6 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
         lastScrollTopRef.current = currentScrollTop;
 
         if (starfieldSpeedRef && controlsStarfield) {
-          // Amplify velocity slightly for effect
           starfieldSpeedRef.current = velocity * 5;
         }
 
@@ -157,8 +179,12 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
       }
 
       return () => {
-        if (container) container.removeEventListener("scroll", handleScroll);
-        if (rAFRef.current) cancelAnimationFrame(rAFRef.current);
+        if (container) {
+          container.removeEventListener("scroll", handleScroll);
+        }
+        if (rAFRef.current) {
+          cancelAnimationFrame(rAFRef.current);
+        }
       };
     }, [controlsStarfield, starfieldSpeedRef]);
 
@@ -167,15 +193,12 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
         ref={ref}
         className="fixed inset-0 z-40 flex justify-center text-white opacity-0 invisible pointer-events-none"
       >
-        {/* Header & Instructions Layer (Fixed Top) */}
         <div className="absolute top-0 left-0 right-0 z-50 flex flex-col items-center pointer-events-none">
           <header className="w-full pt-12 pb-4 flex flex-col items-center gap-4">
-            {/* Month Name */}
             <div className="text-xs tracking-[0.3em] font-light text-gray-400 uppercase">
               February
             </div>
 
-            {/* Number Line */}
             <div className="relative flex items-center justify-center gap-8 text-sm font-mono text-gray-600 select-none">
               <span>10</span>
               <span>11</span>
@@ -187,7 +210,6 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
               <span>17</span>
               <span>18</span>
 
-              {/* Arrow pointing to 14 */}
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-white animate-bounce">
                 <svg
                   width="10"
@@ -202,7 +224,6 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
             </div>
           </header>
 
-          {/* Back Button - Fixed Top Left */}
           <button
             onClick={onBack}
             className="back-button opacity-0 absolute top-8 left-8 z-50 text-gray-400 hover:text-white transition-colors pointer-events-auto flex items-center gap-2 group"
@@ -229,13 +250,10 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
           </button>
         </div>
 
-        {/* Scrollable Grid Container */}
         <div className="absolute inset-0 z-10 flex justify-center overflow-hidden pointer-events-auto">
           <div className="relative w-full max-w-4xl h-full">
-            {/* Top Fade Mask */}
             <div className="absolute top-0 left-0 right-0 h-32 bg-linear-to-b from-black via-black/80 to-transparent z-20 pointer-events-none fade-mask" />
 
-            {/* Scrollable Area */}
             <nav
               ref={scrollContainerRef}
               className="relative h-full overflow-y-auto no-scrollbar pt-40 pb-32 px-6"
@@ -267,7 +285,6 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
               </div>
             </nav>
 
-            {/* Bottom Fade Mask */}
             <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-black via-black/80 to-transparent z-20 pointer-events-none fade-mask" />
           </div>
         </div>
