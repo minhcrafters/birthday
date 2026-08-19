@@ -1,59 +1,39 @@
 import React from "react";
-import { LetterData } from "../data/letters";
-import Ella from "./letters/Ella";
-import Snoofy from "./letters/Snoofy";
-import Aoco from "./letters/Aoco";
-import Pychael from "./letters/Pychael";
-import Surprise from "./letters/Surprise";
-import Turtles from "./letters/Turtles";
+import { letters, StandardLetterContent } from "../data/letters";
+import StandardLetter from "./letters/StandardLetter";
 
 interface LetterViewProps {
-  letter: LetterData | null;
+  activeLetterId: string | null;
   onDismiss: () => void;
   onCloseComplete?: () => void;
 }
 
+const isStandard = (
+  letter: (typeof letters)[number],
+): letter is (typeof letters)[number] & { content: StandardLetterContent } =>
+  letter.content.layout === "standard";
+
 const LetterView = ({
-  letter,
+  activeLetterId,
   onDismiss,
   onCloseComplete,
 }: LetterViewProps) => {
-  // We render all letter components.
-  // Only the one matching letter.id will be "open".
-  // When letter becomes null, all become "closed", triggering exit animations in the active one.
-
+  // We render every standard letter. Only the one matching activeLetterId is
+  // "open" — the rest stay mounted so their exit animation can play when
+  // activeLetterId becomes null. Slideshow-layout letters (e.g. the unlockable
+  // finale) are handled separately by Experience, since they take over the
+  // whole screen rather than opening as a letter.
   return (
     <>
-      <Ella
-        isOpen={letter?.id === "ella"}
-        onDismiss={onDismiss}
-        onCloseComplete={onCloseComplete}
-      />
-      <Snoofy
-        isOpen={letter?.id === "snoofy"}
-        onDismiss={onDismiss}
-        onCloseComplete={onCloseComplete}
-      />
-      <Aoco
-        isOpen={letter?.id === "aoco"}
-        onDismiss={onDismiss}
-        onCloseComplete={onCloseComplete}
-      />
-      <Pychael
-        isOpen={letter?.id === "pychael"}
-        onDismiss={onDismiss}
-        onCloseComplete={onCloseComplete}
-      />
-      <Turtles
-        isOpen={letter?.id === "turtles"}
-        onDismiss={onDismiss}
-        onCloseComplete={onCloseComplete}
-      />
-      <Surprise
-        isOpen={letter?.id === "surprise"}
-        onDismiss={onDismiss}
-        onCloseComplete={onCloseComplete}
-      />
+      {letters.filter(isStandard).map((letter) => (
+        <StandardLetter
+          key={letter.id}
+          letter={letter}
+          isOpen={letter.id === activeLetterId}
+          onDismiss={onDismiss}
+          onCloseComplete={onCloseComplete}
+        />
+      ))}
     </>
   );
 };

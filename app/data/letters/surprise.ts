@@ -1,42 +1,14 @@
-export interface LetterData {
-  id: string;
-  nickname: string;
-  imageSrc?: string;
-  bgmSrc?: string;
-  content?: string[];
-}
+import { LetterData } from "./types";
 
-export const letters: LetterData[] = [
-  {
-    id: "ella",
-    nickname: "Ella",
-    imageSrc: "/images/pfp/ella.png",
-  },
-  {
-    id: "snoofy",
-    nickname: "Snoofy",
-    imageSrc: "/images/pfp/snoofy.png",
-  },
-  {
-    id: "aoco",
-    nickname: "Aoco",
-    imageSrc: "/images/pfp/aoco.png",
-  },
-  {
-    id: "pychael",
-    nickname: "Pychael",
-    imageSrc: "/images/pfp/pychael.png",
-  },
-  {
-    id: "turtles",
-    nickname: "Turtles",
-    imageSrc: "/images/pfp/turtles.webp",
-  },
-  {
-    id: "surprise",
-    nickname: "A Surprise",
-    imageSrc: "/images/stargazer.svg",
-    content: [
+export const surprise: LetterData = {
+  id: "surprise",
+  nickname: "A Surprise",
+  imageSrc: "/images/stargazer.svg",
+  featured: true,
+  unlock: { type: "readAllOthers" },
+  content: {
+    layout: "slideshow",
+    slides: [
       "Shiori.",
       "私が崇拝していた人。",
       "心から信頼できる人。",
@@ -54,4 +26,4 @@ export const letters: LetterData[] = [
       "最愛なるあなたへ — Miyamura",
     ],
   },
-];
+};

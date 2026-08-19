@@ -18,21 +18,29 @@ export async function getGalleryImages(): Promise<GalleryImage[]> {
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name);
 
-  const images: GalleryImage[] = [];
+  const imagesByAuthor = await Promise.all(
+    authors.map(async (author): Promise<GalleryImage[]> => {
+      const authorDir = path.join(galleryDir, author);
 
-  for (const author of authors) {
-    const authorDir = path.join(galleryDir, author);
-    const files = await fs.readdir(authorDir);
-    const mediaFiles = files.filter((file) => MEDIA_EXTENSION_RE.test(file));
+      let files: string[];
+      try {
+        files = await fs.readdir(authorDir);
+      } catch {
+        // Directory may have been removed/renamed between the top-level
+        // listing and this read (or become unreadable) — skip it rather
+        // than failing the whole gallery.
+        return [];
+      }
 
-    for (const file of mediaFiles) {
-      images.push({
-        id: `${author}-${file}`,
-        src: `/images/gallery/${author}/${file}`,
-        author,
-      });
-    }
-  }
+      return files
+        .filter((file) => MEDIA_EXTENSION_RE.test(file))
+        .map((file) => ({
+          id: `${author}-${file}`,
+          src: `/images/gallery/${author}/${file}`,
+          author,
+        }));
+    }),
+  );
 
-  return images;
+  return imagesByAuthor.flat();
 }

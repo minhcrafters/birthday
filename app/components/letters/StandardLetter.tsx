@@ -2,24 +2,21 @@ import { useRef, useEffect } from "react";
 import Image from "next/image";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { LetterData, StandardLetterContent } from "../../data/letters";
 
-export const meta = {
-  id: "pychael",
-  nickname: "Pychael",
-  imageSrc: "/images/pfp/pychael.png",
-};
-
-interface LetterProps {
+interface StandardLetterProps {
+  letter: LetterData & { content: StandardLetterContent };
   isOpen: boolean;
   onDismiss: () => void;
   onCloseComplete?: () => void;
 }
 
-export default function Pychael({
+export default function StandardLetter({
+  letter,
   isOpen,
   onDismiss,
   onCloseComplete,
-}: LetterProps) {
+}: StandardLetterProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const contentWrapperRef = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLDivElement>(null);
@@ -75,11 +72,11 @@ export default function Pychael({
           { opacity: 1, duration: 0.6, ease: "power2.inOut" },
         );
 
-        const paragraphs = textRef.current.querySelectorAll("p");
+        const flowItems = textRef.current.querySelectorAll("p, video");
         const image = textRef.current.querySelector(".letter-image");
 
         tl.fromTo(
-          paragraphs,
+          flowItems,
           { y: 20, opacity: 0 },
           {
             y: 0,
@@ -113,7 +110,7 @@ export default function Pychael({
         });
         timelineRef.current = tl;
 
-        const paragraphs = textRef.current.querySelectorAll("p");
+        const flowItems = textRef.current.querySelectorAll("p, video");
         const image = textRef.current.querySelector(".letter-image");
 
         if (image) {
@@ -126,7 +123,7 @@ export default function Pychael({
         }
 
         tl.to(
-          paragraphs,
+          flowItems,
           {
             y: -10,
             opacity: 0,
@@ -172,71 +169,51 @@ export default function Pychael({
               ref={textRef}
               className="block font-serif text-xl md:text-3xl leading-relaxed text-gray-200 select-text cursor-text w-full"
             >
-              <p>
-                To my favorite halo, the 5'13 japanese muscular tomboy, and the
-                realest nigga that I know,
-              </p>
-              <div className="float-right ml-6 mb-1 relative z-0">
-                <Image
-                  src={meta.imageSrc}
-                  width={256}
-                  height={256}
-                  alt={meta.nickname}
-                  className="letter-image w-32 h-32 md:w-64 md:h-64 object-cover rounded-lg shadow-2xl transform rotate-3 contrast-125 border border-white/20"
-                />
-              </div>
-              <p>
-                We finally made it to the real date, ain't we? To be honest, it
-                kinda fits that your birthday is on Valentine's Day, considering
-                you're a hopeless romantic (as evidenced by your constant
-                Miyamura chasing lmao). I know he's been blunt, but don't let it
-                get you down too much. You're a rare catch, and if he doesn't
-                see that, it's his loss.
-              </p>
-              <p>
-                It's been a crazy 8 months since we started talking, from me
-                thinking you were a rich ass dude to finding out you're the
-                coolest (and scariest) tomboy I know (still being rich ass tho
-                hehe). Looking back, we really went from random occasional DMs
-                to us screaming at the top of our lungs with that one skeleton
-                shield GIF. Imma be honest, it has never been boring with you.
-                Even when you're busy, you still make time, and I appreciate
-                that.
-              </p>
-              <p>
-                You trusted me when you did not trust many people. You talked
-                when things were falling apart instead of disappearing. And I
-                tell you, that matters more than you think. I did not text you
-                out of obligation, but because you are real, because you are
-                funny in a certain way, because you care real hard about your
-                sister, your work, and the people you let close.
-              </p>
-              <p>
-                I know stuff get heavy sometimes, among the side effects of
-                antidepressants and constant exhaustion, but it makes me
-                appreciate our trust even more. I hate seeing you on the low,
-                but I respect the hell out of you for still standing. You are
-                genuinely one of the strongest people I know, both physically
-                and mentally.
-              </p>
-              <p>
-                I'm looking forward to seeing "Dear Memoire" on Netflix one day,
-                and I definitely am going to keep glazing your art, one sketch
-                at a time. You're an underrated masterpiece yourself, Shiori.
-                Stop being so apologetic for living a life, you deserve every
-                second of it.
-              </p>
-              <p>
-                Remember what I told you. I am always here if you need to vent,
-                if you need someone to find sauces of obscure images, or if you
-                just need a hug. You aren't a burden, and you never will be.
-              </p>
-              <p>
-                Happy birthday, Shiori. You made it through another year. That
-                already counts for something.
-              </p>
-              <p>Love you /p,</p>
-              <p>- Michael/Luigi</p>
+              {letter.content.blocks.map((block, index) => {
+                switch (block.type) {
+                  case "paragraph":
+                  case "signature":
+                    return <p key={index}>{block.text}</p>;
+                  case "image":
+                    return (
+                      <div
+                        key={index}
+                        className="float-right ml-6 mb-1 relative z-0"
+                      >
+                        <Image
+                          src={block.src}
+                          width={256}
+                          height={256}
+                          alt={block.alt}
+                          className={`letter-image w-32 h-32 md:w-64 md:h-64 object-cover rounded-lg shadow-2xl transform rotate-3 contrast-125 border border-white/20 ${
+                            block.grayscale ? "grayscale" : ""
+                          }`}
+                        />
+                      </div>
+                    );
+                  case "video":
+                    return (
+                      <video
+                        key={index}
+                        src={block.src}
+                        className="letter-video w-full md:w-1/2 object-cover rounded-lg shadow-2xl border border-white/20 mt-4 mx-auto block"
+                        controls
+                        onPlay={() =>
+                          window.dispatchEvent(
+                            new CustomEvent("letter-video-play"),
+                          )
+                        }
+                        onPause={() =>
+                          window.dispatchEvent(
+                            new CustomEvent("letter-video-pause"),
+                          )
+                        }
+                      />
+                    );
+                  default:
+                    return null;
+                }
+              })}
             </div>
           </div>
         </div>

@@ -1,14 +1,14 @@
 import React, { useRef, useState, useEffect } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { LetterData } from "../data/letters";
+import { LetterData, SlideshowLetterContent } from "../../data/letters";
 
-interface SurpriseRevealProps {
-  letter: LetterData;
+interface SlideshowLetterProps {
+  letter: LetterData & { content: SlideshowLetterContent };
   onComplete: () => void;
 }
 
-const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
+const SlideshowLetter: React.FC<SlideshowLetterProps> = ({
   letter,
   onComplete,
 }) => {
@@ -17,11 +17,13 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
   const whiteOverlayRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const slides = letter.content.slides;
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(true);
 
   useEffect(() => {
-    const audio = new Audio("/audio/prelude.wav");
+    const audio = new Audio(letter.content.preludeSrc ?? "/audio/prelude.wav");
     audio.loop = true;
     audio.volume = 0.4;
     audioRef.current = audio;
@@ -33,7 +35,7 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
         aud.currentTime = 0;
       }
     };
-  }, []);
+  }, [letter.content.preludeSrc]);
 
   const fadeOutAudio = () => {
     if (audioRef.current) {
@@ -96,8 +98,7 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
       audioRef.current.play().catch(() => {});
     }
 
-    const content = letter.content || [];
-    const isLastSlide = currentIndex >= content.length - 1;
+    const isLastSlide = currentIndex >= slides.length - 1;
 
     setIsAnimating(true);
 
@@ -165,9 +166,8 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
     return "text-2xl md:text-4xl font-light text-gray-100 font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
   };
 
-  const content = letter.content || [];
-  const currentText = content[currentIndex] || "";
-  const isLast = currentIndex === content.length - 1;
+  const currentText = slides[currentIndex] || "";
+  const isLast = currentIndex === slides.length - 1;
 
   return (
     <div
@@ -187,7 +187,7 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
       <div className="relative z-30 max-w-4xl px-8 flex justify-center items-center min-h-[50vh]">
         <div
           ref={textRef}
-          className={`${getTextStyle(currentIndex, content.length)} text-center will-change-transform will-change-opacity`}
+          className={`${getTextStyle(currentIndex, slides.length)} text-center will-change-transform will-change-opacity`}
         >
           {currentText}
         </div>
@@ -204,4 +204,4 @@ const SurpriseReveal: React.FC<SurpriseRevealProps> = ({
   );
 };
 
-export default SurpriseReveal;
+export default SlideshowLetter;

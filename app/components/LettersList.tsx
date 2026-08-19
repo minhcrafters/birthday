@@ -1,30 +1,36 @@
 import React, { forwardRef, useLayoutEffect, useRef } from "react";
 import Image from "next/image";
 import { LetterData } from "../data/letters";
+import { siteConfig } from "../config/site";
 
 interface LettersListProps {
   letters: LetterData[];
   onLetterSelect: (id: string) => void;
-  onGalleryOpen: () => void;
   onBack: () => void;
-  visible: boolean;
   starfieldSpeedRef: React.RefObject<number>;
   controlsStarfield?: boolean;
   readLetterIds?: string[];
-  isSurpriseUnlocked?: boolean;
+  lockedLetterIds?: string[];
+}
+
+const DAY_STRIP_RADIUS = 4;
+
+/** Days shown either side of the configured birthday, handling month rollover. */
+function getBirthdayDayStrip(month: number, day: number): number[] {
+  const days: number[] = [];
+  for (let offset = -DAY_STRIP_RADIUS; offset <= DAY_STRIP_RADIUS; offset++) {
+    days.push(new Date(Date.UTC(2024, month - 1, day + offset)).getUTCDate());
+  }
+  return days;
 }
 
 const Envelope = ({
   letter,
-  index,
-  isLast,
   isRead,
   isLocked,
   onClick,
 }: {
   letter: LetterData;
-  index: number;
-  isLast: boolean;
   isRead?: boolean;
   isLocked?: boolean;
   onClick: () => void;
@@ -48,21 +54,21 @@ const Envelope = ({
   const labelActiveClasses = "text-gray-400 group-hover:text-white";
   const labelReadClasses = "text-gray-600";
 
-  const isSurprise = isLast;
+  const isFeatured = Boolean(letter.featured);
 
   return (
     <button
       onClick={onClick}
       disabled={isLocked}
       className={`group relative flex flex-col items-center justify-center p-6 transition-all duration-500 focus:outline-none w-full ${
-        isSurprise ? "aspect-2/1 md:aspect-3/1" : "aspect-square"
+        isFeatured ? "aspect-2/1 md:aspect-3/1" : "aspect-square"
       } ${isLocked ? "opacity-60 cursor-not-allowed grayscale" : "hover:scale-105"}`}
     >
       <div
         className={`${cardBaseClasses} ${
           isLocked
             ? cardLockedClasses
-            : isRead && !isSurprise
+            : isRead && !isFeatured
               ? cardReadClasses
               : cardActiveClasses
         }`}
@@ -72,7 +78,7 @@ const Envelope = ({
         className={`${iconBaseClasses} ${
           isLocked
             ? iconLockedClasses
-            : isRead && !isSurprise
+            : isRead && !isFeatured
               ? iconReadClasses
               : iconActiveClasses
         }`}
@@ -94,21 +100,21 @@ const Envelope = ({
           </svg>
         ) : (
           <Image
-            src={`/images/icons/letter_${isSurprise ? "purple" : "blue"}_${
+            src={`/images/icons/letter_${isFeatured ? "purple" : "blue"}_${
               isRead ? "open" : "closed"
             }.png`}
             alt="Envelope"
             width={800}
             height={600}
             className={`w-3/4 h-3/4 object-contain drop-shadow-lg transition-transform duration-700 ${
-              isSurprise
+              isFeatured
                 ? "group-hover:scale-110"
                 : "group-hover:-translate-y-2"
-            } ${isRead && !isSurprise ? "opacity-75" : ""}`}
+            } ${isRead && !isFeatured ? "opacity-75" : ""}`}
           />
         )}
 
-        {isSurprise && !isLocked && (
+        {isFeatured && !isLocked && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div className="w-full h-full absolute bg-linear-to-r from-transparent via-white/5 to-transparent animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
           </div>
@@ -118,11 +124,11 @@ const Envelope = ({
       <div className="absolute bottom-4 left-0 right-0 text-center z-20">
         <span
           className={`${labelBaseClasses} ${
-            isSurprise ? "text-base md:text-lg font-bold" : ""
+            isFeatured ? "text-base md:text-lg font-bold" : ""
           } ${
             isLocked
               ? labelLockedClasses
-              : isRead && !isSurprise
+              : isRead && !isFeatured
                 ? labelReadClasses
                 : labelActiveClasses
           }`}
@@ -143,11 +149,16 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
       starfieldSpeedRef,
       controlsStarfield = false,
       readLetterIds = [],
-      isSurpriseUnlocked = false,
+      lockedLetterIds = [],
     },
     ref,
   ) => {
     const scrollContainerRef = useRef<HTMLElement>(null);
+    const dayStrip = getBirthdayDayStrip(
+      siteConfig.birthday.month,
+      siteConfig.birthday.day,
+    );
+    const targetDayIndex = Math.floor(dayStrip.length / 2);
     const lastScrollTopRef = useRef(0);
     const rAFRef = useRef<number | null>(null);
 
@@ -196,19 +207,20 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
         <div className="absolute top-0 left-0 right-0 z-50 flex flex-col items-center pointer-events-none">
           <header className="w-full pt-12 pb-4 flex flex-col items-center gap-4">
             <div className="text-xs tracking-[0.3em] font-light text-gray-400 uppercase">
-              February
+              {siteConfig.monthName}
             </div>
 
             <div className="relative flex items-center justify-center gap-8 text-sm font-mono text-gray-600 select-none">
-              <span>10</span>
-              <span>11</span>
-              <span>12</span>
-              <span>13</span>
-              <span className="text-white font-bold scale-125">14</span>
-              <span>15</span>
-              <span>16</span>
-              <span>17</span>
-              <span>18</span>
+              {dayStrip.map((dayOfMonth, i) => (
+                <span
+                  key={i}
+                  className={
+                    i === targetDayIndex ? "text-white font-bold scale-125" : ""
+                  }
+                >
+                  {String(dayOfMonth).padStart(2, "0")}
+                </span>
+              ))}
 
               <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-white animate-bounce">
                 <svg
@@ -259,22 +271,19 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
               className="relative h-full overflow-y-auto no-scrollbar pt-40 pb-32 px-6"
             >
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                {letters.map((letter, index) => {
-                  const isLast = index === letters.length - 1;
+                {letters.map((letter) => {
                   const isRead = readLetterIds.includes(letter.id);
-                  const isLocked = isLast && !isSurpriseUnlocked;
+                  const isLocked = lockedLetterIds.includes(letter.id);
 
                   return (
                     <div
                       key={letter.id}
                       className={`menu-item-wrapper ${
-                        isLast ? "col-span-2 md:col-span-3" : "col-span-1"
+                        letter.featured ? "col-span-2 md:col-span-3" : "col-span-1"
                       }`}
                     >
                       <Envelope
                         letter={letter}
-                        index={index}
-                        isLast={isLast}
                         isRead={isRead}
                         isLocked={isLocked}
                         onClick={() => onLetterSelect(letter.id)}

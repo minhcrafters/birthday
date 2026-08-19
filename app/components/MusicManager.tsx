@@ -96,6 +96,11 @@ export default function MusicManager({
 
         const loadBuffer = async (url: string) => {
           const res = await fetch(url);
+          if (!res.ok) {
+            throw new Error(
+              `Failed to fetch audio "${url}": ${res.status} ${res.statusText}`,
+            );
+          }
           const arrayBuffer = await res.arrayBuffer();
           return await ctx.decodeAudioData(arrayBuffer);
         };

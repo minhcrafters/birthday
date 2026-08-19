@@ -2,11 +2,13 @@
 
 import AudioControl from "./AudioControl";
 import MusicManager from "./MusicManager";
-import { letters } from "../data/letters";
+import { letters, LetterData, SlideshowLetterContent } from "../data/letters";
+import { isLetterLocked, getLetterAudioSrc } from "../lib/letters";
+import { siteConfig } from "../config/site";
 import Starfield, { STARFIELD_OPACITY } from "./Starfield";
 import Gallery from "./Gallery";
 import Credits from "./Credits";
-import SurpriseReveal from "./SurpriseReveal";
+import SlideshowLetter from "./letters/SlideshowLetter";
 import ExtraWorks from "./extra/ExtraWorks";
 import { useSound } from "../contexts/SoundContext";
 import React, { useRef, useState, useEffect } from "react";
@@ -25,20 +27,35 @@ gsap.ticker.lagSmoothing(0);
 
 const SKIP_INTRO = false;
 
-const INTRO_TEXTS = [
-  "Hey, Shiori.",
-  "Do you know what day it is today?",
-  "That's right.",
-  "Today's Valentine's Day.",
-  "it is the day where an angel was summoned into this world...",
-  "the day where a best friend to many people was born.",
-  "So we made something for you.",
-  "A small place filled with words we never say out loud...",
-  "and memories you might recognise.",
-  "Take your time.",
-  "There's something waiting for you at the end.",
-  "For now...",
-];
+const INTRO_TEXTS = siteConfig.introTexts;
+const introTwist = siteConfig.introTwist;
+
+// Segment timings for the type -> backspace -> retype gag; must match the
+// tween durations built in the Phase 1 useGSAP effect below.
+const TWIST_TYPE_CPS = 0.08;
+const TWIST_PAUSE_AFTER_TYPE = 0.1;
+const TWIST_BACKSPACE_CPS = 0.05;
+const TWIST_PAUSE_AFTER_RETYPE = 1.2;
+const TWIST_FADE_OUT = 1;
+const TWIST_PAUSE_AFTER_FADE = 0.5;
+
+const calculateIntroTwistDuration = (twist: NonNullable<typeof introTwist>) => {
+  const { revealText, keepPrefix, finalText } = twist;
+  return (
+    revealText.length * TWIST_TYPE_CPS +
+    TWIST_PAUSE_AFTER_TYPE +
+    (revealText.length - keepPrefix.length) * TWIST_BACKSPACE_CPS +
+    Math.max(0, finalText.length - keepPrefix.length) * TWIST_TYPE_CPS +
+    TWIST_PAUSE_AFTER_RETYPE +
+    TWIST_FADE_OUT +
+    TWIST_PAUSE_AFTER_FADE
+  );
+};
+
+const isSlideshowLetter = (
+  letter: LetterData,
+): letter is LetterData & { content: SlideshowLetterContent } =>
+  letter.content.layout === "slideshow";
 
 interface ExperienceProps {
   galleryImages: GalleryImage[];
@@ -78,9 +95,10 @@ export default function Experience({ galleryImages }: ExperienceProps) {
   const starfieldSpeedRef = useRef(0);
   const transitionOverlayRef = useRef<HTMLDivElement>(null);
 
-  const isSurpriseUnlocked = letters
-    .filter((l) => l.id !== "surprise")
-    .every((l) => readLetterIds.includes(l.id));
+  const slideshowLetter = letters.find(isSlideshowLetter) ?? null;
+  const lockedLetterIds = letters
+    .filter((l) => isLetterLocked(l, letters, readLetterIds))
+    .map((l) => l.id);
 
   const [introDelay, setIntroDelay] = useState<number | null>(null);
 
@@ -90,8 +108,9 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       INTRO_TEXTS.reduce((acc, text) => {
         let duration = text.length * 0.08 + 2.7;
 
-        if (text === "Today's Valentine's Day.") {
-          duration = 7.14;
+        if (introTwist && text === introTwist.revealText) {
+          duration =
+            introTwist.revealDuration ?? calculateIntroTwistDuration(introTwist);
         }
 
         return acc + duration;
@@ -227,10 +246,12 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
       if (!SKIP_INTRO) {
         INTRO_TEXTS.forEach((text) => {
-          if (text === "Today's Valentine's Day.") {
+          if (introTwist && text === introTwist.revealText) {
+            const { revealText, keepPrefix, finalText } = introTwist;
+
             textTl.to(textEl, {
-              text: { value: text, delimiter: "" },
-              duration: text.length * 0.08,
+              text: { value: revealText, delimiter: "" },
+              duration: revealText.length * TWIST_TYPE_CPS,
               ease: "none",
               onUpdate: function () {
                 const currentText = this.targets()[0].textContent;
@@ -245,19 +266,18 @@ export default function Experience({ galleryImages }: ExperienceProps) {
               },
             });
 
-            textTl.to({}, { duration: 0.6 });
+            textTl.to({}, { duration: TWIST_PAUSE_AFTER_TYPE });
 
-            const fullStr = "Today's Valentine's Day.";
-            const targetStr = "Today's ";
-            const backspaceObj = { len: fullStr.length };
+            const backspaceObj = { len: revealText.length };
 
             textTl.to(backspaceObj, {
-              len: targetStr.length,
-              duration: (fullStr.length - targetStr.length) * 0.05,
+              len: keepPrefix.length,
+              duration:
+                (revealText.length - keepPrefix.length) * TWIST_BACKSPACE_CPS,
               ease: "none",
               onUpdate: () => {
                 if (textEl) {
-                  textEl.textContent = fullStr.substring(
+                  textEl.textContent = revealText.substring(
                     0,
                     Math.ceil(backspaceObj.len),
                   );
@@ -266,10 +286,11 @@ export default function Experience({ galleryImages }: ExperienceProps) {
               },
             });
 
-            const finalText = "Today's your birthday.";
             textTl.to(textEl, {
               text: { value: finalText, delimiter: "" },
-              duration: "your birthday.".length * 0.08,
+              duration:
+                Math.max(0, finalText.length - keepPrefix.length) *
+                TWIST_TYPE_CPS,
               ease: "none",
               onUpdate: function () {
                 const currentText = this.targets()[0].textContent;
@@ -280,20 +301,20 @@ export default function Experience({ galleryImages }: ExperienceProps) {
                 }
               },
               onStart: function () {
-                this._prevLen = targetStr.length;
+                this._prevLen = keepPrefix.length;
               },
             });
 
-            textTl.to({}, { duration: 1.2 });
+            textTl.to({}, { duration: TWIST_PAUSE_AFTER_RETYPE });
 
             textTl.to(textEl, {
               opacity: 0,
-              duration: 1,
+              duration: TWIST_FADE_OUT,
               ease: "power2.in",
             });
 
             textTl.set(textEl, { text: "", opacity: 1 });
-            textTl.to({}, { duration: 0.5 });
+            textTl.to({}, { duration: TWIST_PAUSE_AFTER_FADE });
 
             return;
           }
@@ -622,11 +643,14 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
   // Letter open / close handlers
   const handleLetterSelect = (id: string) => {
-    if (id === "surprise") {
-      if (!isSurpriseUnlocked) {
-        return;
-      }
+    const letter = letters.find((l) => l.id === id);
+    if (!letter) return;
 
+    if (isLetterLocked(letter, letters, readLetterIds)) {
+      return;
+    }
+
+    if (isSlideshowLetter(letter)) {
       playSfx("open");
 
       if (transitionOverlayRef.current) {
@@ -742,11 +766,9 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       <LettersList
         ref={menuRef}
         letters={letters}
-        visible={introComplete}
         readLetterIds={readLetterIds}
-        isSurpriseUnlocked={isSurpriseUnlocked}
+        lockedLetterIds={lockedLetterIds}
         onLetterSelect={handleLetterSelect}
-        onGalleryOpen={() => setShowGallery(true)}
         onBack={() => {
           setMenuMounted(false);
           setShowTitleScreen(true);
@@ -756,13 +778,18 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       />
 
       <LetterView
-        letter={activeLetter}
+        activeLetterId={activeLetterId}
         onDismiss={handleLetterDismiss}
         onCloseComplete={() => {}}
       />
 
       {showGallery && (
-        <Gallery images={galleryImages} onClose={() => setShowGallery(false)} />
+        <Gallery
+          images={galleryImages}
+          onClose={() => setShowGallery(false)}
+          starfieldSpeedRef={starfieldSpeedRef}
+          controlsStarfield={showGallery}
+        />
       )}
 
       {showCredits && <Credits onClose={() => setShowCredits(false)} />}
@@ -774,7 +801,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
       {activeLetter && (
         <AudioControl
-          src={`/audio/${activeLetter.id}.mp3`}
+          src={getLetterAudioSrc(activeLetter)}
           targetVolume={audioVolume}
         />
       )}
@@ -784,12 +811,14 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         className="fixed inset-0 z-200 bg-white pointer-events-none opacity-0 hidden"
       />
 
-      {showSurprise && (
-        <SurpriseReveal
-          letter={letters.find((l) => l.id === "surprise")!}
+      {showSurprise && slideshowLetter && (
+        <SlideshowLetter
+          letter={slideshowLetter}
           onComplete={() => {
             setReadLetterIds((prev) =>
-              prev.includes("surprise") ? prev : [...prev, "surprise"],
+              prev.includes(slideshowLetter.id)
+                ? prev
+                : [...prev, slideshowLetter.id],
             );
             setShowSurprise(false);
             setMenuInteractive(true);

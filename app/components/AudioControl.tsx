@@ -17,11 +17,12 @@ const AudioControl = ({ src, targetVolume }: AudioControlProps) => {
   const hasInteractedRef = useRef(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  useEffect(() => {
-    if (audioRef1.current && src) {
-      audioRef1.current.src = src;
-    }
-  }, [src]);
+  // NOTE: initial src assignment for the active player is handled by the
+  // crossfade effect below (its `!hasInteracted` branch). A separate effect
+  // here that unconditionally wrote `audioRef1.current.src = src` on every
+  // `src` change used to race with the crossfade logic: it could overwrite
+  // the "outgoing" player's src before the crossfade effect read it, turning
+  // an intended fade into an abrupt cut.
 
   useEffect(() => {
     const handleInteraction = () => {

@@ -31,6 +31,7 @@ const LyricsDisplay = ({
   const lyricsRefs = useRef<(HTMLParagraphElement | null)[]>([]);
   const timelineRef = useRef<gsap.core.Timeline | null>(null);
   const rafRef = useRef<number | null>(null);
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useGSAP(
     () => {
@@ -105,13 +106,17 @@ const LyricsDisplay = ({
           syncWithAudio();
         } else {
           const waitTime = (loopsStartTime - currentAudioTime) * 1000;
-          setTimeout(startSync, waitTime);
+          syncTimeoutRef.current = setTimeout(startSync, waitTime);
         }
       };
 
       startSync();
 
       return () => {
+        if (syncTimeoutRef.current) {
+          clearTimeout(syncTimeoutRef.current);
+          syncTimeoutRef.current = null;
+        }
         if (rafRef.current) {
           cancelAnimationFrame(rafRef.current);
         }
