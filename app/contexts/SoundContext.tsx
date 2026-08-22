@@ -8,14 +8,7 @@ import React, {
   useState,
 } from "react";
 
-type SoundName =
-  | "click"
-  | "hover"
-  | "warp"
-  | "open"
-  | "close"
-  | "blip"
-  | "blip_alt";
+type SoundName = "click" | "blip" | "blip_alt";
 
 interface SoundContextType {
   playSfx: (name: SoundName) => void;
@@ -27,10 +20,6 @@ const SoundContext = createContext<SoundContextType | null>(null);
 
 const SFX_MAP: Record<SoundName, string> = {
   click: "/audio/click.wav",
-  hover: "/audio/test2.mp3",
-  warp: "/audio/test3.mp3",
-  open: "/audio/test1.mp3",
-  close: "/audio/test2.mp3",
   blip: "/audio/blip.wav",
   blip_alt: "/audio/blip_alt.wav",
 };

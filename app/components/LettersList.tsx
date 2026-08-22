@@ -26,33 +26,36 @@ function getBirthdayDayStrip(month: number, day: number): number[] {
 
 const Envelope = ({
   letter,
+  index,
   isRead,
   isLocked,
   onClick,
 }: {
   letter: LetterData;
+  index: number;
   isRead?: boolean;
   isLocked?: boolean;
   onClick: () => void;
 }) => {
+  const tone = index % 2 === 0 ? "coral" : "mint";
+
   const cardBaseClasses =
-    "absolute inset-0 border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)]";
-  const cardLockedClasses = "bg-slate-900/20 border-white/5";
+    "absolute inset-0 rounded-2xl border-2 transition-all duration-500 shadow-md";
+  const cardLockedClasses = "bg-birthday-cream/60 border-birthday-gold/15";
   const cardActiveClasses =
-    "bg-slate-900/50 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]";
-  const cardReadClasses = "border-white/5 bg-slate-900/20";
+    tone === "coral"
+      ? "bg-birthday-cream/90 border-birthday-coral-deep/30 group-hover:border-birthday-coral-deep group-hover:shadow-lg"
+      : "bg-birthday-cream/90 border-birthday-mint-deep/30 group-hover:border-birthday-mint-deep group-hover:shadow-lg";
+  const cardReadClasses = "bg-birthday-cream/70 border-birthday-gold/20";
 
   const iconBaseClasses =
     "relative z-10 w-full h-full flex items-center justify-center transition-colors duration-500";
-  const iconLockedClasses = "text-gray-600";
-  const iconActiveClasses = "text-white/80 group-hover:text-white";
-  const iconReadClasses = "text-gray-500";
 
   const labelBaseClasses =
-    "font-serif tracking-widest uppercase text-xs md:text-sm transition-colors duration-300";
-  const labelLockedClasses = "text-gray-700";
-  const labelActiveClasses = "text-gray-400 group-hover:text-white";
-  const labelReadClasses = "text-gray-600";
+    "font-sans tracking-widest uppercase text-xs md:text-sm transition-colors duration-300";
+  const labelLockedClasses = "text-birthday-ink/30";
+  const labelActiveClasses = "text-birthday-ink/70 group-hover:text-birthday-ink";
+  const labelReadClasses = "text-birthday-ink/40";
 
   const isFeatured = Boolean(letter.featured);
 
@@ -62,7 +65,7 @@ const Envelope = ({
       disabled={isLocked}
       className={`group relative flex flex-col items-center justify-center p-6 transition-all duration-500 focus:outline-none w-full ${
         isFeatured ? "aspect-2/1 md:aspect-3/1" : "aspect-square"
-      } ${isLocked ? "opacity-60 cursor-not-allowed grayscale" : "hover:scale-105"}`}
+      } ${isLocked ? "opacity-70 cursor-not-allowed grayscale" : "hover:-translate-y-1"}`}
     >
       <div
         className={`${cardBaseClasses} ${
@@ -74,19 +77,19 @@ const Envelope = ({
         }`}
       />
 
-      <div
-        className={`${iconBaseClasses} ${
-          isLocked
-            ? iconLockedClasses
-            : isRead && !isFeatured
-              ? iconReadClasses
-              : iconActiveClasses
-        }`}
-      >
+      {!isLocked && !(isRead && !isFeatured) && (
+        <div
+          className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-1.5 w-10 rounded-full ${
+            tone === "coral" ? "bg-birthday-coral-deep" : "bg-birthday-mint-deep"
+          }`}
+        />
+      )}
+
+      <div className={iconBaseClasses}>
         {isLocked ? (
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="w-1/3 h-1/3"
+            className="w-1/3 h-1/3 text-birthday-ink/30"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -116,7 +119,7 @@ const Envelope = ({
 
         {isFeatured && !isLocked && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-full h-full absolute bg-linear-to-r from-transparent via-white/5 to-transparent animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+            <div className="w-full h-full absolute bg-linear-to-r from-transparent via-birthday-gold/10 to-transparent animate-pulse opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
           </div>
         )}
       </div>
@@ -139,6 +142,23 @@ const Envelope = ({
     </button>
   );
 };
+
+const BackArrow = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-4 w-4"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M15 19l-7-7 7-7"
+    />
+  </svg>
+);
 
 const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
   (
@@ -202,27 +222,29 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
     return (
       <div
         ref={ref}
-        className="fixed inset-0 z-40 flex justify-center text-white opacity-0 invisible pointer-events-none"
+        className="fixed inset-0 z-10 flex justify-center text-birthday-ink opacity-0 invisible pointer-events-none"
       >
         <div className="absolute top-0 left-0 right-0 z-50 flex flex-col items-center pointer-events-none">
           <header className="w-full pt-12 pb-4 flex flex-col items-center gap-4">
-            <div className="text-xs tracking-[0.3em] font-light text-gray-400 uppercase">
+            <div className="text-xs tracking-[0.3em] font-light text-birthday-ink/50 uppercase">
               {siteConfig.monthName}
             </div>
 
-            <div className="relative flex items-center justify-center gap-8 text-sm font-mono text-gray-600 select-none">
+            <div className="relative flex items-center justify-center gap-8 text-sm font-mono text-birthday-ink/40 select-none">
               {dayStrip.map((dayOfMonth, i) => (
                 <span
                   key={i}
                   className={
-                    i === targetDayIndex ? "text-white font-bold scale-125" : ""
+                    i === targetDayIndex
+                      ? "text-birthday-coral-deep font-bold scale-125"
+                      : ""
                   }
                 >
                   {String(dayOfMonth).padStart(2, "0")}
                 </span>
               ))}
 
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-white animate-bounce">
+              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 text-birthday-coral-deep animate-bounce">
                 <svg
                   width="10"
                   height="6"
@@ -230,7 +252,7 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  <path d="M5 6L0 0H10L5 6Z" fill="white" />
+                  <path d="M5 6L0 0H10L5 6Z" fill="currentColor" />
                 </svg>
               </div>
             </div>
@@ -238,23 +260,10 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
 
           <button
             onClick={onBack}
-            className="back-button opacity-0 absolute top-8 left-8 z-50 text-gray-400 hover:text-white transition-colors pointer-events-auto flex items-center gap-2 group"
+            className="back-button opacity-0 absolute top-8 left-8 z-50 text-birthday-ink/60 hover:text-birthday-ink transition-colors pointer-events-auto flex items-center gap-2 group"
           >
-            <div className="p-1 border border-gray-600 rounded-full group-hover:border-white transition-all">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-4 w-4"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M15 19l-7-7 7-7"
-                />
-              </svg>
+            <div className="p-1 border border-birthday-gold/40 rounded-full bg-birthday-cream/80 group-hover:border-birthday-gold transition-all">
+              <BackArrow />
             </div>
             <span className="text-[10px] uppercase tracking-[0.2em] hidden md:block">
               Back
@@ -264,14 +273,12 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
 
         <div className="absolute inset-0 z-10 flex justify-center overflow-hidden pointer-events-auto">
           <div className="relative w-full max-w-4xl h-full">
-            <div className="absolute top-0 left-0 right-0 h-32 bg-linear-to-b from-black via-black/80 to-transparent z-20 pointer-events-none fade-mask" />
-
             <nav
               ref={scrollContainerRef}
               className="relative h-full overflow-y-auto no-scrollbar pt-40 pb-32 px-6"
             >
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                {letters.map((letter) => {
+                {letters.map((letter, index) => {
                   const isRead = readLetterIds.includes(letter.id);
                   const isLocked = lockedLetterIds.includes(letter.id);
 
@@ -284,6 +291,7 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
                     >
                       <Envelope
                         letter={letter}
+                        index={index}
                         isRead={isRead}
                         isLocked={isLocked}
                         onClick={() => onLetterSelect(letter.id)}
@@ -293,8 +301,6 @@ const LettersList = forwardRef<HTMLDivElement, LettersListProps>(
                 })}
               </div>
             </nav>
-
-            <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-black via-black/80 to-transparent z-20 pointer-events-none fade-mask" />
           </div>
         </div>
       </div>

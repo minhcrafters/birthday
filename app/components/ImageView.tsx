@@ -2,7 +2,6 @@ import React, { useRef } from "react";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { GalleryImage } from "../data/galleryData";
-import { useSound } from "../contexts/SoundContext";
 
 interface ImageViewProps {
   image: GalleryImage;
@@ -10,7 +9,6 @@ interface ImageViewProps {
 }
 
 export default function ImageView({ image, onClose }: ImageViewProps) {
-  const { playSfx } = useSound();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
@@ -41,8 +39,6 @@ export default function ImageView({ image, onClose }: ImageViewProps) {
   );
 
   const handleClose = () => {
-    playSfx("close");
-
     if (!containerRef.current) {
       onClose();
       return;
@@ -70,10 +66,10 @@ export default function ImageView({ image, onClose }: ImageViewProps) {
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-80 flex items-center justify-center bg-black/98 backdrop-blur-xl pointer-events-auto"
+      className="fixed inset-0 z-45 flex items-center justify-center bg-birthday-ink/95 backdrop-blur-xl pointer-events-auto"
       onClick={handleClose}
     >
-      <div className="absolute top-6 right-6 md:top-8 md:right-8 text-white/50 hover:text-white cursor-pointer z-50 p-4 border border-transparent hover:border-white/30 transition-all duration-300 group">
+      <div className="absolute top-6 right-6 md:top-8 md:right-8 text-birthday-cream/50 hover:text-birthday-cream cursor-pointer z-50 p-4 border border-transparent hover:border-birthday-gold/40 rounded-full transition-all duration-300 group">
         <span className="text-[10px] uppercase tracking-[0.3em] font-mono mr-2 hidden md:inline-block opacity-0 group-hover:opacity-100 transition-opacity">
           Close
         </span>
@@ -97,7 +93,7 @@ export default function ImageView({ image, onClose }: ImageViewProps) {
         className="image-content flex flex-col items-center max-w-[95vw] max-h-[95vh] gap-8"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="relative border border-white/10 bg-neutral-900 p-1 md:p-2 shadow-2xl">
+        <div className="relative border-2 border-birthday-gold/50 bg-birthday-ink/40 p-1 md:p-2 shadow-2xl">
           <img
             src={image.src}
             alt={
@@ -109,10 +105,10 @@ export default function ImageView({ image, onClose }: ImageViewProps) {
 
         {image.author && (
           <div className="text-center space-y-2">
-            <p className="text-gray-500 text-[10px] tracking-[0.3em] uppercase font-mono border-b border-gray-800 pb-2 inline-block">
+            <p className="text-birthday-cream/50 text-[10px] tracking-[0.3em] uppercase font-mono border-b border-birthday-cream/20 pb-2 inline-block">
               By
             </p>
-            <p className="text-white text-2xl md:text-3xl font-serif font-bold tracking-widest uppercase">
+            <p className="text-birthday-cream text-2xl md:text-3xl font-sans font-bold tracking-widest uppercase">
               {image.author}
             </p>
           </div>

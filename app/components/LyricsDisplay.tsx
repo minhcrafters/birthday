@@ -9,17 +9,17 @@ interface LyricsDisplayProps {
 }
 
 const LYRICS = [
-  "Take me back when",
-  "we met at",
-  "Covent Garden",
-  "My time is frozen",
+  "If you want, you could stay with me in my bed",
+  "If you want to, only if you want to",
+  "If you want, you can go ahead and fix my head",
+  "If you want to, only if you want to",
 ];
 
-const BPM = 120;
+const BPM = 116;
 const BEATS_PER_LINE = 8;
 const SECONDS_PER_BEAT = 60 / BPM;
 const LINE_DURATION = BEATS_PER_LINE * SECONDS_PER_BEAT;
-const FADE_DURATION = 0.5;
+const FADE_DURATION = 0.3;
 const TOTAL_LOOP_DURATION = LYRICS.length * LINE_DURATION;
 
 const LyricsDisplay = ({
@@ -148,7 +148,7 @@ const LyricsDisplay = ({
           ref={(el) => {
             lyricsRefs.current[index] = el;
           }}
-          className="col-start-1 row-start-1 whitespace-nowrap text-xs font-medium tracking-[0.3em] text-gray-500 text-center"
+          className="col-start-1 row-start-1 whitespace-nowrap text-xs font-medium tracking-[0.3em] text-birthday-ink/50 text-center"
           style={{ opacity: 0 }}
         >
           {line.toUpperCase()}

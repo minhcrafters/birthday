@@ -28,22 +28,26 @@ export default function MusicManager({
 }: MusicManagerProps) {
   const contextRef = useRef<AudioContext | null>(null);
 
-  const gainIntroRef = useRef<GainNode | null>(null);
-  const gainAccRef = useRef<GainNode | null>(null);
-  const gainVocalsRef = useRef<GainNode | null>(null);
+  const gainIntroAccRef = useRef<GainNode | null>(null);
+  const gainIntroVoxRef = useRef<GainNode | null>(null);
+  const gainLoopAccRef = useRef<GainNode | null>(null);
+  const gainLoopVoxRef = useRef<GainNode | null>(null);
 
-  const sourceIntroRef = useRef<AudioBufferSourceNode | null>(null);
-  const sourceAccRef = useRef<AudioBufferSourceNode | null>(null);
-  const sourceVocalsRef = useRef<AudioBufferSourceNode | null>(null);
+  const sourceIntroAccRef = useRef<AudioBufferSourceNode | null>(null);
+  const sourceIntroVoxRef = useRef<AudioBufferSourceNode | null>(null);
+  const sourceLoopAccRef = useRef<AudioBufferSourceNode | null>(null);
+  const sourceLoopVoxRef = useRef<AudioBufferSourceNode | null>(null);
 
   const buffersRef = useRef<{
-    intro: AudioBuffer | null;
-    acc: AudioBuffer | null;
-    vocals: AudioBuffer | null;
+    introAcc: AudioBuffer | null;
+    introVox: AudioBuffer | null;
+    loopAcc: AudioBuffer | null;
+    loopVox: AudioBuffer | null;
   }>({
-    intro: null,
-    acc: null,
-    vocals: null,
+    introAcc: null,
+    introVox: null,
+    loopAcc: null,
+    loopVox: null,
   });
 
   const [isAudioLoaded, setIsAudioLoaded] = useState(false);
@@ -78,21 +82,25 @@ export default function MusicManager({
         window.addEventListener("touchstart", unlock);
         window.addEventListener("keydown", unlock);
 
-        const gIntro = ctx.createGain();
-        const gAcc = ctx.createGain();
-        const gVocals = ctx.createGain();
+        const gIntroAcc = ctx.createGain();
+        const gIntroVox = ctx.createGain();
+        const gLoopAcc = ctx.createGain();
+        const gLoopVox = ctx.createGain();
 
-        gIntro.gain.value = 0;
-        gAcc.gain.value = 0;
-        gVocals.gain.value = 0;
+        gIntroAcc.gain.value = 0;
+        gIntroVox.gain.value = 0;
+        gLoopAcc.gain.value = 0;
+        gLoopVox.gain.value = 0;
 
-        gIntro.connect(ctx.destination);
-        gAcc.connect(ctx.destination);
-        gVocals.connect(ctx.destination);
+        gIntroAcc.connect(ctx.destination);
+        gIntroVox.connect(ctx.destination);
+        gLoopAcc.connect(ctx.destination);
+        gLoopVox.connect(ctx.destination);
 
-        gainIntroRef.current = gIntro;
-        gainAccRef.current = gAcc;
-        gainVocalsRef.current = gVocals;
+        gainIntroAccRef.current = gIntroAcc;
+        gainIntroVoxRef.current = gIntroVox;
+        gainLoopAccRef.current = gLoopAcc;
+        gainLoopVoxRef.current = gLoopVox;
 
         const loadBuffer = async (url: string) => {
           const res = await fetch(url);
@@ -105,18 +113,21 @@ export default function MusicManager({
           return await ctx.decodeAudioData(arrayBuffer);
         };
 
-        const [introBuf, accBuf, vocBuf] = await Promise.all([
-          loadBuffer("/audio/intro.wav"),
-          loadBuffer("/audio/loop_acc.wav"),
-          loadBuffer("/audio/loop_vocals.wav"),
-        ]);
+        const [introAccBuf, introVoxBuf, loopAccBuf, loopVoxBuf] =
+          await Promise.all([
+            loadBuffer("/audio/new/intro_acc.wav"),
+            loadBuffer("/audio/new/intro_vox.wav"),
+            loadBuffer("/audio/new/loop_acc.wav"),
+            loadBuffer("/audio/new/loop_vox.wav"),
+          ]);
 
-        buffersRef.current.intro = introBuf;
-        buffersRef.current.acc = accBuf;
-        buffersRef.current.vocals = vocBuf;
+        buffersRef.current.introAcc = introAccBuf;
+        buffersRef.current.introVox = introVoxBuf;
+        buffersRef.current.loopAcc = loopAccBuf;
+        buffersRef.current.loopVox = loopVoxBuf;
 
-        setIntroDuration(introBuf.duration);
-        if (onDurationLoaded) onDurationLoaded(introBuf.duration);
+        setIntroDuration(introAccBuf.duration);
+        if (onDurationLoaded) onDurationLoaded(introAccBuf.duration);
 
         setIsAudioLoaded(true);
       } catch (e) {
@@ -148,13 +159,13 @@ export default function MusicManager({
         ctx.resume().catch(console.error);
       }
 
-      const { intro, acc, vocals } = buffersRef.current;
-      if (!intro || !acc || !vocals) return;
+      const { introAcc, introVox, loopAcc, loopVox } = buffersRef.current;
+      if (!introAcc || !introVox || !loopAcc || !loopVox) return;
 
-      const delay = Math.max(0, textDuration - intro.duration);
+      const delay = Math.max(0, textDuration - introAcc.duration);
       const now = ctx.currentTime;
       const introStartTime = now + delay + 0.1;
-      const loopsStartTime = introStartTime + intro.duration;
+      const loopsStartTime = introStartTime + introAcc.duration;
 
       scheduledLoopsStartTimeRef.current = loopsStartTime;
 
@@ -162,43 +173,44 @@ export default function MusicManager({
         `Scheduling Audio: Intro at ${introStartTime}, Loops at ${loopsStartTime} (Delay: ${delay})`,
       );
 
-      const srcIntro = ctx.createBufferSource();
-      srcIntro.buffer = intro;
-      srcIntro.connect(gainIntroRef.current!);
-      srcIntro.start(introStartTime);
-      sourceIntroRef.current = srcIntro;
+      const srcIntroAcc = ctx.createBufferSource();
+      srcIntroAcc.buffer = introAcc;
+      srcIntroAcc.connect(gainIntroAccRef.current!);
+      srcIntroAcc.start(introStartTime);
+      sourceIntroAccRef.current = srcIntroAcc;
 
-      srcIntro.onended = () => {
+      srcIntroAcc.onended = () => {
         onIntroEnd();
       };
 
-      const startDelay = introStartTime - now;
-      const gIntro = gainIntroRef.current!;
+      const srcIntroVox = ctx.createBufferSource();
+      srcIntroVox.buffer = introVox;
+      srcIntroVox.connect(gainIntroVoxRef.current!);
+      srcIntroVox.start(introStartTime);
+      sourceIntroVoxRef.current = srcIntroVox;
 
-      gIntro.gain.cancelScheduledValues(now);
-      gIntro.gain.setValueAtTime(0, now);
+      const gIntroAcc = gainIntroAccRef.current!;
+      const gIntroVox = gainIntroVoxRef.current!;
 
-      gsap.to(gIntro.gain, {
-        value: volume,
-        duration: intro.duration,
-        ease: "power2.in",
-        delay: startDelay,
-        overwrite: true,
+      [gIntroAcc, gIntroVox].forEach((g) => {
+        g.gain.cancelScheduledValues(now);
+        g.gain.setValueAtTime(0, now);
+        g.gain.setValueAtTime(volume, introStartTime);
       });
 
-      const srcAcc = ctx.createBufferSource();
-      srcAcc.buffer = acc;
-      srcAcc.loop = true;
-      srcAcc.connect(gainAccRef.current!);
-      srcAcc.start(loopsStartTime);
-      sourceAccRef.current = srcAcc;
+      const srcLoopAcc = ctx.createBufferSource();
+      srcLoopAcc.buffer = loopAcc;
+      srcLoopAcc.loop = true;
+      srcLoopAcc.connect(gainLoopAccRef.current!);
+      srcLoopAcc.start(loopsStartTime);
+      sourceLoopAccRef.current = srcLoopAcc;
 
-      const srcVocals = ctx.createBufferSource();
-      srcVocals.buffer = vocals;
-      srcVocals.loop = true;
-      srcVocals.connect(gainVocalsRef.current!);
-      srcVocals.start(loopsStartTime);
-      sourceVocalsRef.current = srcVocals;
+      const srcLoopVox = ctx.createBufferSource();
+      srcLoopVox.buffer = loopVox;
+      srcLoopVox.loop = true;
+      srcLoopVox.connect(gainLoopVoxRef.current!);
+      srcLoopVox.start(loopsStartTime);
+      sourceLoopVoxRef.current = srcLoopVox;
 
       if (onLoopsStarted) {
         onLoopsStarted(loopsStartTime, ctx);
@@ -222,20 +234,25 @@ export default function MusicManager({
       if (scheduledLoopsStartTimeRef.current > now + 0.5) {
         console.log("Skipping Intro Audio - Jumping to Loops");
 
-        if (sourceIntroRef.current) {
+        if (sourceIntroAccRef.current) {
           try {
-            sourceIntroRef.current.stop();
+            sourceIntroAccRef.current.stop();
+          } catch (e) {}
+        }
+        if (sourceIntroVoxRef.current) {
+          try {
+            sourceIntroVoxRef.current.stop();
           } catch (e) {}
         }
 
-        if (sourceAccRef.current) {
+        if (sourceLoopAccRef.current) {
           try {
-            sourceAccRef.current.stop();
+            sourceLoopAccRef.current.stop();
           } catch (e) {}
         }
-        if (sourceVocalsRef.current) {
+        if (sourceLoopVoxRef.current) {
           try {
-            sourceVocalsRef.current.stop();
+            sourceLoopVoxRef.current.stop();
           } catch (e) {}
         }
 
@@ -243,27 +260,27 @@ export default function MusicManager({
           clearTimeout(introTimeoutRef.current);
         }
 
-        const { acc, vocals } = buffersRef.current;
-        if (acc && vocals) {
-          const srcAcc = ctx.createBufferSource();
-          srcAcc.buffer = acc;
-          srcAcc.loop = true;
-          srcAcc.connect(gainAccRef.current!);
-          srcAcc.start(now);
-          sourceAccRef.current = srcAcc;
+        const { loopAcc, loopVox } = buffersRef.current;
+        if (loopAcc && loopVox) {
+          const srcLoopAcc = ctx.createBufferSource();
+          srcLoopAcc.buffer = loopAcc;
+          srcLoopAcc.loop = true;
+          srcLoopAcc.connect(gainLoopAccRef.current!);
+          srcLoopAcc.start(now);
+          sourceLoopAccRef.current = srcLoopAcc;
 
-          const srcVocals = ctx.createBufferSource();
-          srcVocals.buffer = vocals;
-          srcVocals.loop = true;
-          srcVocals.connect(gainVocalsRef.current!);
-          srcVocals.start(now);
-          sourceVocalsRef.current = srcVocals;
+          const srcLoopVox = ctx.createBufferSource();
+          srcLoopVox.buffer = loopVox;
+          srcLoopVox.loop = true;
+          srcLoopVox.connect(gainLoopVoxRef.current!);
+          srcLoopVox.start(now);
+          sourceLoopVoxRef.current = srcLoopVox;
 
-          gainAccRef.current!.gain.cancelScheduledValues(now);
-          gainAccRef.current!.gain.setValueAtTime(volume, now);
+          gainLoopAccRef.current!.gain.cancelScheduledValues(now);
+          gainLoopAccRef.current!.gain.setValueAtTime(volume, now);
 
-          gainVocalsRef.current!.gain.cancelScheduledValues(now);
-          gainVocalsRef.current!.gain.setValueAtTime(0, now);
+          gainLoopVoxRef.current!.gain.cancelScheduledValues(now);
+          gainLoopVoxRef.current!.gain.setValueAtTime(0, now);
 
           if (onLoopsStarted) {
             onLoopsStarted(now, ctx);
@@ -277,23 +294,31 @@ export default function MusicManager({
 
   // Volume & vocal ducking
   useEffect(() => {
-    if (gainIntroRef.current) {
-      gsap.to(gainIntroRef.current.gain, {
+    if (gainIntroAccRef.current) {
+      gsap.to(gainIntroAccRef.current.gain, {
         value: volume,
         duration: fadeDuration,
         overwrite: "auto",
       });
     }
 
-    if (gainAccRef.current) {
-      gsap.to(gainAccRef.current.gain, {
+    if (gainIntroVoxRef.current) {
+      gsap.to(gainIntroVoxRef.current.gain, {
         value: volume,
         duration: fadeDuration,
         overwrite: "auto",
       });
     }
 
-    if (gainVocalsRef.current) {
+    if (gainLoopAccRef.current) {
+      gsap.to(gainLoopAccRef.current.gain, {
+        value: volume,
+        duration: fadeDuration,
+        overwrite: "auto",
+      });
+    }
+
+    if (gainLoopVoxRef.current) {
       const shouldPlayVocals = inTitleScreen && !isMenuMounted;
       const targetVocalVol = shouldPlayVocals ? volume : 0;
 
@@ -304,7 +329,7 @@ export default function MusicManager({
         hasIntroTransitionHappenedRef.current = true;
       }
 
-      gsap.to(gainVocalsRef.current.gain, {
+      gsap.to(gainLoopVoxRef.current.gain, {
         value: targetVocalVol,
         duration: duration,
         ease: "power2.inOut",
@@ -316,22 +341,29 @@ export default function MusicManager({
   useEffect(() => {
     const onVideoPlay = () => {
       if (!contextRef.current) return;
-      if (gainIntroRef.current) {
-        gsap.to(gainIntroRef.current.gain, {
+      if (gainIntroAccRef.current) {
+        gsap.to(gainIntroAccRef.current.gain, {
           value: 0,
           duration: 0.25,
           overwrite: "auto",
         });
       }
-      if (gainAccRef.current) {
-        gsap.to(gainAccRef.current.gain, {
+      if (gainIntroVoxRef.current) {
+        gsap.to(gainIntroVoxRef.current.gain, {
           value: 0,
           duration: 0.25,
           overwrite: "auto",
         });
       }
-      if (gainVocalsRef.current) {
-        gsap.to(gainVocalsRef.current.gain, {
+      if (gainLoopAccRef.current) {
+        gsap.to(gainLoopAccRef.current.gain, {
+          value: 0,
+          duration: 0.25,
+          overwrite: "auto",
+        });
+      }
+      if (gainLoopVoxRef.current) {
+        gsap.to(gainLoopVoxRef.current.gain, {
           value: 0,
           duration: 0.25,
           overwrite: "auto",
@@ -341,24 +373,31 @@ export default function MusicManager({
 
     const onVideoPause = () => {
       if (!contextRef.current) return;
-      if (gainIntroRef.current) {
-        gsap.to(gainIntroRef.current.gain, {
+      if (gainIntroAccRef.current) {
+        gsap.to(gainIntroAccRef.current.gain, {
           value: volume,
           duration: 0.5,
           overwrite: "auto",
         });
       }
-      if (gainAccRef.current) {
-        gsap.to(gainAccRef.current.gain, {
+      if (gainIntroVoxRef.current) {
+        gsap.to(gainIntroVoxRef.current.gain, {
           value: volume,
           duration: 0.5,
           overwrite: "auto",
         });
       }
-      if (gainVocalsRef.current) {
+      if (gainLoopAccRef.current) {
+        gsap.to(gainLoopAccRef.current.gain, {
+          value: volume,
+          duration: 0.5,
+          overwrite: "auto",
+        });
+      }
+      if (gainLoopVoxRef.current) {
         const shouldPlayVocals = inTitleScreen && !isMenuMounted;
         const targetVocalVol = shouldPlayVocals ? volume : 0;
-        gsap.to(gainVocalsRef.current.gain, {
+        gsap.to(gainLoopVoxRef.current.gain, {
           value: targetVocalVol,
           duration: 0.5,
           overwrite: "auto",

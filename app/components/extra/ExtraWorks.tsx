@@ -199,7 +199,7 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-90 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 md:p-10"
+      className="gingham-background fixed inset-0 z-50 flex items-center justify-center p-6 md:p-10"
       onClick={() => {
         if (openRef.current) requestClose();
       }}
@@ -209,12 +209,12 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
     >
       <div
         ref={panelRef}
-        className="w-full max-w-3xl border border-white/20 bg-black/70 shadow-2xl"
+        className="w-full max-w-3xl rounded-[2rem] border border-birthday-gold/30 bg-birthday-cream/95 shadow-[0_20px_45px_-15px_rgba(74,46,42,0.35)] backdrop-blur-sm"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-6 p-6 md:p-8 border-b border-white/10">
+        <div className="flex items-start justify-between gap-6 p-6 md:p-8 border-b border-birthday-gold/20">
           <div className="min-w-0">
-            <h2 className="text-white text-sm md:text-base uppercase tracking-[0.3em]">
+            <h2 className="text-birthday-ink text-sm md:text-base uppercase tracking-[0.3em] font-bold">
               Extra Works
             </h2>
           </div>
@@ -223,7 +223,7 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
             onClick={() => {
               if (openRef.current) requestClose();
             }}
-            className="text-xs uppercase tracking-[0.2em] text-gray-400 hover:text-white transition-colors"
+            className="text-xs uppercase tracking-[0.2em] text-birthday-ink/50 hover:text-birthday-ink transition-colors"
           >
             Close
           </button>
@@ -231,24 +231,27 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
 
         <div className="p-6 md:p-8">
           {loading && (
-            <div className="text-center text-sm text-gray-400">Loading…</div>
+            <div className="text-center text-sm text-birthday-ink/50">
+              Loading…
+            </div>
           )}
 
           {!loading && error && (
-            <div className="text-center text-sm text-red-300">
+            <div className="text-center text-sm text-birthday-coral-deep">
               {error}
-              <div className="mt-3 text-xs text-gray-500">
-                Make sure <code className="text-gray-300">/api/extra</code> is
+              <div className="mt-3 text-xs text-birthday-ink/50">
+                Make sure{" "}
+                <code className="text-birthday-ink/70">/api/extra</code> is
                 available and that the server can read{" "}
-                <code className="text-gray-300">public/extra</code>.
+                <code className="text-birthday-ink/70">public/extra</code>.
               </div>
             </div>
           )}
 
           {!loading && !error && items.length === 0 && (
-            <div className="text-center text-sm text-gray-400">
+            <div className="text-center text-sm text-birthday-ink/50">
               No media found in{" "}
-              <code className="text-gray-300">/public/extra</code>.
+              <code className="text-birthday-ink/70">/public/extra</code>.
             </div>
           )}
 
@@ -257,13 +260,13 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
               <div className="w-full max-w-xl space-y-8">
                 {audioItems.length > 0 && (
                   <section>
-                    <h3 className="text-xs uppercase tracking-[0.25em] text-gray-300 mb-4 text-center">
+                    <h3 className="text-xs uppercase tracking-[0.25em] text-birthday-ink/50 mb-4 text-center">
                       Audio
                     </h3>
                     <ul className="space-y-5">
                       {audioItems.map((item) => (
                         <li key={item.url} className="text-center">
-                          <div className="text-xs md:text-sm text-white/90 mb-2">
+                          <div className="text-xs md:text-sm text-birthday-ink/80 mb-2">
                             {prettyTitle(item.name)}
                           </div>
                           <audio
@@ -272,7 +275,7 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
                             className="mx-auto w-full"
                             src={item.url}
                           />
-                          <div className="mt-2 text-[10px] text-gray-500 break-all">
+                          <div className="mt-2 text-[10px] text-birthday-ink/40 break-all">
                             {item.name}
                           </div>
                         </li>
@@ -283,22 +286,22 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
 
                 {videoItems.length > 0 && (
                   <section>
-                    <h3 className="text-xs uppercase tracking-[0.25em] text-gray-300 mb-4 text-center">
+                    <h3 className="text-xs uppercase tracking-[0.25em] text-birthday-ink/50 mb-4 text-center">
                       Video
                     </h3>
                     <ul className="space-y-8">
                       {videoItems.map((item) => (
                         <li key={item.url} className="text-center">
-                          <div className="text-xs md:text-sm text-white/90 mb-3">
+                          <div className="text-xs md:text-sm text-birthday-ink/80 mb-3">
                             {prettyTitle(item.name)}
                           </div>
                           <video
                             controls
                             preload="metadata"
-                            className="mx-auto w-full rounded-sm border border-white/10"
+                            className="mx-auto w-full rounded-sm border border-birthday-gold/30"
                             src={item.url}
                           />
-                          <div className="mt-2 text-[10px] text-gray-500 break-all">
+                          <div className="mt-2 text-[10px] text-birthday-ink/40 break-all">
                             {item.name}
                           </div>
                         </li>
@@ -309,7 +312,7 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
 
                 {items.some((i) => i.type === "other") && (
                   <section>
-                    <h3 className="text-xs uppercase tracking-[0.25em] text-gray-300 mb-4 text-center">
+                    <h3 className="text-xs uppercase tracking-[0.25em] text-birthday-ink/50 mb-4 text-center">
                       Other
                     </h3>
                     <ul className="space-y-2">
@@ -318,7 +321,7 @@ export default function ExtraWorks({ open, onClose }: ExtraWorksProps) {
                         .map((item) => (
                           <li key={item.url} className="text-center">
                             <a
-                              className="text-xs md:text-sm text-gray-200 hover:text-white underline underline-offset-4"
+                              className="text-xs md:text-sm text-birthday-ink/70 hover:text-birthday-ink underline underline-offset-4"
                               href={item.url}
                               target="_blank"
                               rel="noreferrer"

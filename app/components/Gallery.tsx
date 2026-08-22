@@ -16,6 +16,23 @@ interface GalleryProps {
   controlsStarfield?: boolean;
 }
 
+const BackArrow = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    className="h-4 w-4"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={1.5}
+      d="M15 19l-7-7 7-7"
+    />
+  </svg>
+);
+
 export default function Gallery({
   onClose,
   images,
@@ -108,12 +125,15 @@ export default function Gallery({
 
   useGSAP(
     () => {
-      const tl = gsap.timeline({ delay: 0.5 });
+      // Kept in sync with Experience's Phase 3 title-fade-out (0.5s): the
+      // background must be fully opaque by then or the starfield shows
+      // through as a black gap between screens.
+      const tl = gsap.timeline();
 
       tl.fromTo(
         containerRef.current,
         { autoAlpha: 0 },
-        { autoAlpha: 1, duration: 1.5, ease: "power2.inOut" },
+        { autoAlpha: 1, duration: 0.5, ease: "power2.inOut" },
       );
 
       tl.fromTo(
@@ -123,21 +143,20 @@ export default function Gallery({
           y: 0,
           opacity: 1,
           scale: 1,
-          duration: 0.8,
+          duration: 0.6,
           stagger: 0.05,
           ease: "power3.out",
         },
-        "-=1.0",
+        "-=0.15",
       );
     },
     { scope: containerRef },
   );
 
   const handleClose = () => {
-    playSfx("close");
     gsap.to(containerRef.current, {
       autoAlpha: 0,
-      duration: 0.8,
+      duration: 0.5,
       ease: "power2.in",
       onComplete: onClose,
     });
@@ -166,35 +185,19 @@ export default function Gallery({
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-60 flex justify-center text-white opacity-0 pointer-events-none"
+      className="fixed inset-0 z-40 flex justify-center text-birthday-ink opacity-0 pointer-events-none"
     >
       <div className="absolute top-0 left-0 right-0 z-50 pointer-events-none">
-        <div className="absolute inset-0 h-32 bg-linear-to-b from-black via-black/80 to-transparent -z-10" />
+        <div className="absolute inset-0 h-32 bg-linear-to-b from-birthday-cream via-birthday-cream/85 to-transparent -z-10" />
 
         <div className="absolute top-8 left-8 z-50 pointer-events-auto">
           {selectedCategory ? (
             <button
-              onClick={() => {
-                playSfx("close");
-                setSelectedCategory(null);
-              }}
-              className="back-button text-gray-400 hover:text-white transition-colors flex items-center gap-2 group"
+              onClick={() => setSelectedCategory(null)}
+              className="back-button text-birthday-ink/60 hover:text-birthday-ink transition-colors flex items-center gap-2 group"
             >
-              <div className="p-1 border border-gray-600 rounded-full group-hover:border-white transition-all">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
+              <div className="p-1 border border-birthday-gold/40 rounded-full bg-birthday-cream/80 group-hover:border-birthday-gold transition-all">
+                <BackArrow />
               </div>
               <span className="text-[10px] uppercase tracking-[0.2em] hidden md:block">
                 Categories
@@ -203,23 +206,10 @@ export default function Gallery({
           ) : (
             <button
               onClick={handleClose}
-              className="back-button text-gray-400 hover:text-white transition-colors flex items-center gap-2 group"
+              className="back-button text-birthday-ink/60 hover:text-birthday-ink transition-colors flex items-center gap-2 group"
             >
-              <div className="p-1 border border-gray-600 rounded-full group-hover:border-white transition-all">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-4 w-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M15 19l-7-7 7-7"
-                  />
-                </svg>
+              <div className="p-1 border border-birthday-gold/40 rounded-full bg-birthday-cream/80 group-hover:border-birthday-gold transition-all">
+                <BackArrow />
               </div>
               <span className="text-[10px] uppercase tracking-[0.2em] hidden md:block">
                 Back
@@ -229,10 +219,10 @@ export default function Gallery({
         </div>
 
         <div className="absolute top-8 right-8 z-50 text-right pointer-events-none">
-          <h1 className="text-xl md:text-4xl font-serif font-bold tracking-[0.15em] uppercase text-bright drop-shadow-lg mb-2">
+          <h1 className="text-xl md:text-4xl font-sans font-bold tracking-[0.15em] uppercase text-birthday-ink drop-shadow-sm mb-2">
             Gallery
           </h1>
-          <p className="text-[9px] md:text-[10px] text-text-muted uppercase tracking-[0.2em] font-mono">
+          <p className="text-[9px] md:text-[10px] text-birthday-ink/50 uppercase tracking-[0.2em] font-mono">
             {selectedCategory
               ? `${imagesToShow.length} Memories`
               : `${images.length} Memories Collected`}
@@ -242,23 +232,29 @@ export default function Gallery({
 
       <div className="absolute inset-0 z-10 flex justify-center overflow-hidden pointer-events-auto">
         <div className="relative w-full max-w-5xl h-full">
-          <div className="absolute top-0 left-0 right-0 h-32 bg-linear-to-b from-black via-black/80 to-transparent z-20 pointer-events-none" />
-
           <nav
             ref={gridRef}
             className="relative h-full overflow-y-auto no-scrollbar pt-40 pb-32 px-6"
           >
             {!selectedCategory ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                {categories.map((cat) => (
+                {categories.map((cat, idx) => (
                   <div
                     key={cat.key}
                     onClick={() => handleCategoryClick(cat.key)}
-                    className="gallery-item group relative aspect-square cursor-pointer flex flex-col items-center justify-center p-4 transition-all duration-500 hover:scale-105"
+                    className="gallery-item group relative aspect-square cursor-pointer flex flex-col items-center justify-center p-3 transition-all duration-500 hover:-translate-y-1"
                   >
-                    <div className="absolute inset-0 backdrop-blur-sm border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)] bg-slate-900/40 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]" />
+                    <div className="absolute inset-0 rounded-2xl border-2 border-birthday-gold/30 bg-birthday-cream/90 shadow-md transition-all duration-500 group-hover:border-birthday-gold group-hover:shadow-lg" />
 
-                    <div className="relative z-10 w-full h-full overflow-hidden rounded-lg opacity-80 group-hover:opacity-100 transition-opacity duration-300">
+                    <div
+                      className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-1.5 w-10 rounded-full ${
+                        idx % 2 === 0
+                          ? "bg-birthday-coral-deep"
+                          : "bg-birthday-mint-deep"
+                      }`}
+                    />
+
+                    <div className="relative z-10 w-full h-full overflow-hidden rounded-xl m-2">
                       {cat.preview ? (
                         <Image
                           src={cat.preview}
@@ -267,13 +263,15 @@ export default function Gallery({
                           className="object-cover transform transition-transform duration-700 ease-out group-hover:scale-110"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gray-800 flex items-center justify-center text-sm">
+                        <div className="w-full h-full bg-birthday-cream flex items-center justify-center text-sm text-birthday-ink">
                           {cat.name}
                         </div>
                       )}
-                      <div className="absolute left-4 bottom-4 z-20 text-left">
-                        <div className="text-sm font-semibold">{cat.name}</div>
-                        <div className="text-xs text-text-muted">
+                      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-birthday-ink/70 to-transparent px-4 pb-3 pt-8 text-left">
+                        <div className="text-sm font-semibold text-white">
+                          {cat.name}
+                        </div>
+                        <div className="text-xs text-white/75">
                           {cat.count} photos
                         </div>
                       </div>
@@ -289,25 +287,12 @@ export default function Gallery({
                       playSfx("click");
                       setSelectedCategory(null);
                     }}
-                    className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white pointer-events-auto"
+                    className="inline-flex items-center gap-2 text-sm text-birthday-ink/60 hover:text-birthday-ink pointer-events-auto"
                   >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-4 w-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.5}
-                        d="M15 19l-7-7 7-7"
-                      />
-                    </svg>
+                    <BackArrow />
                     Back to categories
                   </button>
-                  <div className="mt-2 text-sm text-text-muted">
+                  <div className="mt-2 text-sm text-birthday-ink/50">
                     {selectedCategory
                       ? formatCategoryName(selectedCategory)
                       : ""}
@@ -315,15 +300,23 @@ export default function Gallery({
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
-                  {imagesToShow.map((img) => (
+                  {imagesToShow.map((img, idx) => (
                     <div
                       key={img.id}
                       onClick={() => handleImageClick(img)}
-                      className="gallery-item group relative aspect-square cursor-pointer flex flex-col items-center justify-center p-4 transition-all duration-500 hover:scale-105"
+                      className="gallery-item group relative aspect-square cursor-pointer flex flex-col items-center justify-center p-3 transition-all duration-500 hover:-translate-y-1"
                     >
-                      <div className="absolute inset-0 backdrop-blur-sm border rounded-xl transition-all duration-500 shadow-[0_0_15px_rgba(0,0,0,0.3)] bg-slate-900/40 border-white/10 group-hover:bg-slate-800/60 group-hover:border-white/30 group-hover:shadow-[0_0_25px_rgba(255,255,255,0.1)]" />
+                      <div className="absolute inset-0 rounded-2xl border-2 border-birthday-gold/30 bg-birthday-cream/90 shadow-md transition-all duration-500 group-hover:border-birthday-gold group-hover:shadow-lg" />
 
-                      <div className="relative z-10 w-full h-full overflow-hidden rounded-lg opacity-80 group-hover:opacity-100 transition-opacity duration-300">
+                      <div
+                        className={`absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 h-1.5 w-10 rounded-full ${
+                          idx % 2 === 0
+                            ? "bg-birthday-coral-deep"
+                            : "bg-birthday-mint-deep"
+                        }`}
+                      />
+
+                      <div className="relative z-10 w-full h-full overflow-hidden rounded-xl m-2">
                         <Image
                           src={img.src}
                           alt={img.author || "Gallery Image"}
@@ -337,8 +330,6 @@ export default function Gallery({
               </>
             )}
           </nav>
-
-          <div className="absolute bottom-0 left-0 right-0 h-32 bg-linear-to-t from-black via-black/80 to-transparent z-20 pointer-events-none" />
         </div>
       </div>
 

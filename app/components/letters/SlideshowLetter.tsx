@@ -41,7 +41,7 @@ const SlideshowLetter: React.FC<SlideshowLetterProps> = ({
     if (audioRef.current) {
       gsap.to(audioRef.current, {
         volume: 0,
-        duration: 2,
+        duration: 1.0,
         onComplete: () => audioRef.current?.pause(),
       });
     }
@@ -58,7 +58,7 @@ const SlideshowLetter: React.FC<SlideshowLetterProps> = ({
       if (whiteOverlayRef.current) {
         tl.to(whiteOverlayRef.current, {
           opacity: 0,
-          duration: 3,
+          duration: 1.0,
           ease: "power2.inOut",
           onComplete: () => {
             gsap.set(whiteOverlayRef.current, { display: "none" });
@@ -74,7 +74,7 @@ const SlideshowLetter: React.FC<SlideshowLetterProps> = ({
             opacity: 1,
             y: 0,
             filter: "blur(0px)",
-            duration: 2.5,
+            duration: 1.0,
             ease: "power2.out",
             onStart: () => {
               if (audioRef.current) {
@@ -84,7 +84,7 @@ const SlideshowLetter: React.FC<SlideshowLetterProps> = ({
               }
             },
           },
-          "-=1.5",
+          "-=0.5",
         );
       }
     },
@@ -109,7 +109,7 @@ const SlideshowLetter: React.FC<SlideshowLetterProps> = ({
         opacity: 0,
         y: -10,
         filter: "blur(5px)",
-        duration: 1,
+        duration: 0.5,
         ease: "power2.in",
         onComplete: () => {
           setCurrentIndex((prev) => prev + 1);
@@ -122,11 +122,10 @@ const SlideshowLetter: React.FC<SlideshowLetterProps> = ({
           opacity: 1,
           y: 0,
           filter: "blur(0px)",
-          duration: 2,
+          duration: 0.8,
           ease: "power2.out",
-          delay: 0.1,
         },
-        "+=0.1",
+        "+=0.08",
       );
 
       tl.call(() => setIsAnimating(false));
@@ -139,7 +138,7 @@ const SlideshowLetter: React.FC<SlideshowLetterProps> = ({
         opacity: 0,
         y: -10,
         filter: "blur(5px)",
-        duration: 1.5,
+        duration: 0.7,
         ease: "power2.in",
       });
 
@@ -147,23 +146,23 @@ const SlideshowLetter: React.FC<SlideshowLetterProps> = ({
         containerRef.current,
         {
           autoAlpha: 0,
-          duration: 2,
+          duration: 0.8,
           ease: "power2.inOut",
           onComplete: onComplete,
         },
-        "-=0.5",
+        "-=0.25",
       );
     }
   };
 
   const getTextStyle = (index: number, total: number) => {
     if (index === 0) {
-      return "text-4xl md:text-6xl font-bold mb-8 text-white font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
+      return "text-4xl md:text-6xl font-bold mb-8 text-birthday-gold font-sans tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(193,154,63,0.4)]";
     }
     if (index === total - 1) {
-      return "text-2xl md:text-3xl mt-8 italic text-gray-300 font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
+      return "text-2xl md:text-3xl mt-8 italic text-birthday-coral font-sans tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
     }
-    return "text-2xl md:text-4xl font-light text-gray-100 font-serif tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
+    return "text-2xl md:text-4xl font-light text-gray-100 font-sans tracking-wider leading-relaxed drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]";
   };
 
   const currentText = slides[currentIndex] || "";
@@ -172,14 +171,14 @@ const SlideshowLetter: React.FC<SlideshowLetterProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`fixed inset-0 z-300 flex flex-col items-center justify-center bg-black ${
+      className={`fixed inset-0 z-100 flex flex-col items-center justify-center bg-black ${
         !isAnimating ? "cursor-pointer" : "cursor-default"
       }`}
       onClick={handleClick}
     >
       <div
         ref={whiteOverlayRef}
-        className="absolute inset-0 z-310 bg-white pointer-events-none"
+        className="absolute inset-0 z-101 bg-white pointer-events-none"
       />
 
       <div className="absolute inset-0 bg-gradient-radial from-white/5 to-transparent opacity-50 pointer-events-none" />
@@ -194,7 +193,7 @@ const SlideshowLetter: React.FC<SlideshowLetterProps> = ({
       </div>
 
       <div
-        className={`absolute bottom-12 text-xs uppercase tracking-[0.3em] text-gray-500 transition-opacity duration-1000 pointer-events-none ${
+        className={`absolute bottom-12 text-xs uppercase tracking-[0.3em] text-birthday-gold/60 transition-opacity duration-1000 pointer-events-none ${
           !isAnimating ? "opacity-100 animate-pulse" : "opacity-0"
         }`}
       >

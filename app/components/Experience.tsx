@@ -27,6 +27,17 @@ gsap.ticker.lagSmoothing(0);
 
 const SKIP_INTRO = false;
 
+// Shared timing for the "warp" scene transitions (title <-> gallery/letters).
+// Kept short and identical on both so switching screens feels consistent
+// instead of some transitions dragging out longer than others.
+const WARP_FADE_DURATION = 0.5;
+const WARP_SPEED_UP_DURATION = 0.5;
+const WARP_SPEED_DOWN_DURATION = 0.65;
+const WARP_SPEED_PEAK = 160;
+const WARP_SPEED_REVERSE_PEAK = -140;
+const SCENE_CONTENT_REVEAL_DURATION = 0.7;
+const SCENE_CONTENT_EXIT_DURATION = 0.5;
+
 const INTRO_TEXTS = siteConfig.introTexts;
 const introTwist = siteConfig.introTwist;
 
@@ -71,7 +82,6 @@ export default function Experience({ galleryImages }: ExperienceProps) {
   const [audioVolume, setAudioVolume] = useState(0.5);
   const [bgmFadeDuration, setBgmFadeDuration] = useState(0.5);
   const [shouldPlayLoops, setShouldPlayLoops] = useState(false);
-  const [introDuration, setIntroDuration] = useState(0);
   const [loopsStartTime, setLoopsStartTime] = useState(0);
   const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
 
@@ -82,11 +92,18 @@ export default function Experience({ galleryImages }: ExperienceProps) {
   const startOverlayRef = useRef<HTMLDivElement>(null);
   const titleScreenWrapperRef = useRef<HTMLDivElement>(null);
   const audioIntroCompleteRef = useRef(false);
+  // Mirrors the audio-duration prop without being a useGSAP dependency —
+  // MusicManager can resolve this after `started` flips true (slow network,
+  // uncached assets), and putting the raw state in Phase 1's dependency
+  // array would revert + rebuild the already-running intro timeline,
+  // snapping the typed text back to the first line mid-animation.
+  const introDurationRef = useRef(0);
 
   const [showTitleScreen, setShowTitleScreen] = useState(false);
   const [hasSeenTitleIntro, setHasSeenTitleIntro] = useState(false);
   const [menuMounted, setMenuMounted] = useState(false);
   const [menuInteractive, setMenuInteractive] = useState(false);
+  const [galleryInteractive, setGalleryInteractive] = useState(false);
   const [showGallery, setShowGallery] = useState(false);
   const [showCredits, setShowCredits] = useState(false);
   const [showExtraWorks, setShowExtraWorks] = useState(false);
@@ -100,8 +117,6 @@ export default function Experience({ galleryImages }: ExperienceProps) {
     .filter((l) => isLetterLocked(l, letters, readLetterIds))
     .map((l) => l.id);
 
-  const [introDelay, setIntroDelay] = useState<number | null>(null);
-
   // Audio sync helpers
   const calculateTextDuration = () => {
     return (
@@ -110,21 +125,16 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
         if (introTwist && text === introTwist.revealText) {
           duration =
-            introTwist.revealDuration ?? calculateIntroTwistDuration(introTwist);
+            introTwist.revealDuration ??
+            calculateIntroTwistDuration(introTwist);
         }
 
         return acc + duration;
-      }, 0) + 1.5
+      }, 0) +
+      1.5 -
+      0.2
     );
   };
-
-  useEffect(() => {
-    if (introDuration > 0) {
-      const textDur = calculateTextDuration();
-      const delay = Math.max(0, textDur - introDuration);
-      setIntroDelay(delay);
-    }
-  }, [introDuration]);
 
   const handleTitleScreenStart = () => {
     setMenuMounted(true);
@@ -148,7 +158,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
   );
 
   const handleDurationLoaded = React.useCallback((d: number) => {
-    setIntroDuration(d);
+    introDurationRef.current = d;
   }, []);
 
   useGSAP(() => {
@@ -181,7 +191,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       window.removeEventListener("click", handleStart);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [started]);
+  }, [started, playSfx]);
 
   // Skip intro shortcut (Shift+J)
   useEffect(() => {
@@ -223,7 +233,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       gsap.set(introEl, {
         autoAlpha: 1,
         backgroundColor: "#000000",
-        zIndex: 50,
+        zIndex: 60,
       });
       gsap.set(textEl, { opacity: 1, text: "", filter: "blur(0px)", scale: 1 });
 
@@ -244,8 +254,15 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         });
       }
 
+      // Matches the audio start offset MusicManager schedules intro_acc/intro_vox at,
+      // so the last line can vanish on the beat instead of fading out.
+      const introAudioStartTime =
+        Math.max(0, calculateTextDuration() - introDurationRef.current) + 0.1;
+
       if (!SKIP_INTRO) {
-        INTRO_TEXTS.forEach((text) => {
+        INTRO_TEXTS.forEach((text, index) => {
+          const isLast = index === INTRO_TEXTS.length - 1;
+
           if (introTwist && text === introTwist.revealText) {
             const { revealText, keepPrefix, finalText } = introTwist;
 
@@ -307,14 +324,23 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
             textTl.to({}, { duration: TWIST_PAUSE_AFTER_RETYPE });
 
-            textTl.to(textEl, {
-              opacity: 0,
-              duration: TWIST_FADE_OUT,
-              ease: "power2.in",
-            });
+            if (isLast) {
+              const holdDuration = Math.max(
+                0.3,
+                introAudioStartTime - textTl.duration(),
+              );
+              textTl.to({}, { duration: holdDuration });
+              textTl.set(textEl, { text: "", opacity: 0 });
+            } else {
+              textTl.to(textEl, {
+                opacity: 0,
+                duration: TWIST_FADE_OUT,
+                ease: "power2.in",
+              });
 
-            textTl.set(textEl, { text: "", opacity: 1 });
-            textTl.to({}, { duration: TWIST_PAUSE_AFTER_FADE });
+              textTl.set(textEl, { text: "", opacity: 1 });
+              textTl.to({}, { duration: TWIST_PAUSE_AFTER_FADE });
+            }
 
             return;
           }
@@ -336,16 +362,25 @@ export default function Experience({ galleryImages }: ExperienceProps) {
             },
           });
 
-          textTl.to({}, { duration: 1.2 });
+          if (isLast) {
+            const holdDuration = Math.max(
+              0.3,
+              introAudioStartTime - textTl.duration(),
+            );
+            textTl.to({}, { duration: holdDuration });
+            textTl.set(textEl, { text: "", opacity: 0 });
+          } else {
+            textTl.to({}, { duration: 1.2 });
 
-          textTl.to(textEl, {
-            opacity: 0,
-            duration: 1,
-            ease: "power2.in",
-          });
+            textTl.to(textEl, {
+              opacity: 0,
+              duration: 1,
+              ease: "power2.in",
+            });
 
-          textTl.set(textEl, { text: "", opacity: 1 });
-          textTl.to({}, { duration: 0.5 });
+            textTl.set(textEl, { text: "", opacity: 1 });
+            textTl.to({}, { duration: 0.5 });
+          }
         });
       }
 
@@ -373,13 +408,13 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
       tl.to(
         introEl,
-        { opacity: 0, duration: 2, ease: "power2.inOut" },
-        "+=0.5",
+        { opacity: 0, duration: 1.0, ease: "power2.inOut" },
+        "+=0.3",
       );
 
       tl.addPause();
     },
-    { scope: containerRef, dependencies: [started, introDuration] },
+    { scope: containerRef, dependencies: [started] },
   );
 
   // Phase 3: Title <-> Gallery warp transitions
@@ -394,18 +429,17 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       if (showGallery) {
         tl.to(titleScreenWrapperRef.current, {
           opacity: 0,
-          duration: 0.8,
+          duration: WARP_FADE_DURATION,
           ease: "power2.inOut",
         });
 
         const speedProxy = { val: starfieldSpeedRef.current || 0 };
-        tl.call(() => playSfx("warp"));
 
         tl.to(
           speedProxy,
           {
-            val: 180,
-            duration: 1.0,
+            val: WARP_SPEED_PEAK,
+            duration: WARP_SPEED_UP_DURATION,
             ease: "power3.in",
             onUpdate: () => {
               starfieldSpeedRef.current = speedProxy.val;
@@ -416,7 +450,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
         tl.to(speedProxy, {
           val: 0,
-          duration: 1.5,
+          duration: WARP_SPEED_DOWN_DURATION,
           ease: "power3.out",
           onUpdate: () => {
             starfieldSpeedRef.current = speedProxy.val;
@@ -425,16 +459,18 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
         tl.call(() => setShowTitleScreen(false));
         tl.set(titleScreenWrapperRef.current, { display: "none" });
+        tl.call(() => setGalleryInteractive(true));
       } else if (hasSeenTitleIntro && !showGallery && !menuMounted) {
+        setGalleryInteractive(false);
+
         tl.call(() => setShowTitleScreen(true));
         tl.set(titleScreenWrapperRef.current, { display: "block", opacity: 0 });
 
         const speedProxy = { val: starfieldSpeedRef.current || 0 };
-        tl.call(() => playSfx("warp"));
 
         tl.to(speedProxy, {
-          val: -150,
-          duration: 0.8,
+          val: WARP_SPEED_REVERSE_PEAK,
+          duration: WARP_SPEED_UP_DURATION,
           ease: "expo.in",
           onUpdate: () => {
             starfieldSpeedRef.current = speedProxy.val;
@@ -443,7 +479,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
         tl.to(titleScreenWrapperRef.current, {
           opacity: 1,
-          duration: 1.0,
+          duration: WARP_FADE_DURATION,
           ease: "power2.out",
         });
 
@@ -451,7 +487,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           speedProxy,
           {
             val: 0,
-            duration: 1.5,
+            duration: WARP_SPEED_DOWN_DURATION,
             ease: "power3.out",
             onUpdate: () => {
               starfieldSpeedRef.current = speedProxy.val;
@@ -476,18 +512,17 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
         tl.to(titleScreenWrapperRef.current, {
           opacity: 0,
-          duration: 0.8,
+          duration: WARP_FADE_DURATION,
           ease: "power2.inOut",
         });
 
         const speedProxy = { val: starfieldSpeedRef.current || 0 };
-        tl.call(() => playSfx("warp"));
 
         tl.to(
           speedProxy,
           {
-            val: 180,
-            duration: 1.0,
+            val: WARP_SPEED_PEAK,
+            duration: WARP_SPEED_UP_DURATION,
             ease: "power3.in",
             onUpdate: () => {
               starfieldSpeedRef.current = speedProxy.val;
@@ -498,7 +533,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
         tl.to(speedProxy, {
           val: 0,
-          duration: 1.5,
+          duration: WARP_SPEED_DOWN_DURATION,
           ease: "power3.out",
           onUpdate: () => {
             starfieldSpeedRef.current = speedProxy.val;
@@ -508,7 +543,6 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         const menuItemWrappers =
           menuRef.current.querySelectorAll(".menu-item-wrapper");
         const headerContent = menuRef.current.querySelectorAll("header > *");
-        const fadeMasks = menuRef.current.querySelectorAll(".fade-mask");
 
         const allMenuContent = [
           ...Array.from(headerContent),
@@ -516,30 +550,19 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         ];
 
         gsap.set(allMenuContent, { y: 0, opacity: 1 });
-        gsap.set(fadeMasks, { opacity: 1 });
 
-        tl.set(menuRef.current, { autoAlpha: 1 }, "<");
+        tl.set(menuRef.current, { autoAlpha: 1 }, 0);
 
         tl.from(
           allMenuContent,
           {
             y: "20vh",
             opacity: 0,
-            duration: 1.5,
+            duration: SCENE_CONTENT_REVEAL_DURATION,
             ease: "power3.out",
-            stagger: 0.1,
+            stagger: 0.06,
           },
-          "<",
-        );
-
-        tl.from(
-          fadeMasks,
-          {
-            opacity: 0,
-            duration: 1.5,
-            ease: "power2.inOut",
-          },
-          "<",
+          0,
         );
 
         tl.call(() => setShowTitleScreen(false));
@@ -548,7 +571,11 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
         const backButton = menuRef.current.querySelector(".back-button");
         if (backButton) {
-          tl.to(backButton, { opacity: 1, duration: 1, ease: "power2.out" });
+          tl.to(backButton, {
+            opacity: 1,
+            duration: SCENE_CONTENT_EXIT_DURATION,
+            ease: "power2.out",
+          });
         }
 
         tl.call(
@@ -565,7 +592,11 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
         const backButton = menuRef.current.querySelector(".back-button");
         if (backButton) {
-          tl.to(backButton, { opacity: 0, duration: 0.3, ease: "power2.out" });
+          tl.to(backButton, {
+            opacity: 0,
+            duration: SCENE_CONTENT_EXIT_DURATION,
+            ease: "power2.out",
+          });
         }
 
         tl.call(() => setShowTitleScreen(true));
@@ -574,7 +605,6 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         const menuItemWrappers =
           menuRef.current.querySelectorAll(".menu-item-wrapper");
         const headerContent = menuRef.current.querySelectorAll("header > *");
-        const fadeMasks = menuRef.current.querySelectorAll(".fade-mask");
         const allMenuContent = [
           ...Array.from(headerContent),
           ...Array.from(menuItemWrappers),
@@ -583,29 +613,18 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         tl.to(allMenuContent, {
           y: "20vh",
           opacity: 0,
-          duration: 0.8,
+          duration: SCENE_CONTENT_EXIT_DURATION,
           ease: "power2.in",
-          stagger: { amount: 0.2, from: "end" },
+          stagger: { amount: 0.15, from: "end" },
         });
 
-        tl.to(
-          fadeMasks,
-          {
-            opacity: 0,
-            duration: 0.8,
-            ease: "power2.inOut",
-          },
-          "<",
-        );
-
         const speedProxy = { val: starfieldSpeedRef.current || 0 };
-        tl.call(() => playSfx("warp"));
 
         tl.to(
           speedProxy,
           {
-            val: -150,
-            duration: 0.8,
+            val: WARP_SPEED_REVERSE_PEAK,
+            duration: WARP_SPEED_UP_DURATION,
             ease: "expo.in",
             onUpdate: () => {
               starfieldSpeedRef.current = speedProxy.val;
@@ -616,7 +635,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
         tl.to(titleScreenWrapperRef.current, {
           opacity: 1,
-          duration: 1.0,
+          duration: WARP_FADE_DURATION,
           ease: "power2.out",
         });
 
@@ -624,7 +643,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           speedProxy,
           {
             val: 0,
-            duration: 1.5,
+            duration: WARP_SPEED_DOWN_DURATION,
             ease: "power3.out",
             onUpdate: () => {
               starfieldSpeedRef.current = speedProxy.val;
@@ -651,8 +670,6 @@ export default function Experience({ galleryImages }: ExperienceProps) {
     }
 
     if (isSlideshowLetter(letter)) {
-      playSfx("open");
-
       if (transitionOverlayRef.current) {
         setBgmFadeDuration(3.0);
         setAudioVolume(0);
@@ -663,7 +680,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         });
         gsap.to(transitionOverlayRef.current, {
           opacity: 1,
-          duration: 1.0,
+          duration: 0.9,
           ease: "power2.inOut",
           onComplete: () => {
             setShowSurprise(true);
@@ -680,7 +697,6 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       return;
     }
 
-    playSfx("open");
     setActiveLetterId(id);
     setBgmFadeDuration(0.5);
     setAudioVolume(0.2);
@@ -691,7 +707,6 @@ export default function Experience({ galleryImages }: ExperienceProps) {
       setReadLetterIds((prev) => [...prev, activeLetterId]);
     }
 
-    playSfx("close");
     setActiveLetterId(null);
     setBgmFadeDuration(0.5);
     setAudioVolume(0.5);
@@ -704,7 +719,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
     >
       <div
         ref={startOverlayRef}
-        className={`fixed inset-0 z-100 flex items-center justify-center bg-bg-deep cursor-pointer ${
+        className={`fixed inset-0 z-90 flex items-center justify-center bg-bg-deep cursor-pointer ${
           started ? "pointer-events-none" : ""
         }`}
       >
@@ -724,6 +739,11 @@ export default function Experience({ galleryImages }: ExperienceProps) {
         opacity={STARFIELD_OPACITY}
       />
 
+      {/* Single persistent gingham layer behind the title/gallery/letters
+          screens, so its CSS drift animation never resets or falls out of
+          phase when those screens crossfade against each other. */}
+      <div className="gingham-background fixed inset-0 z-5 pointer-events-none" />
+
       <Intro ref={introRef} />
 
       <MusicManager
@@ -741,7 +761,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
       <div
         ref={titleScreenWrapperRef}
-        className="fixed inset-0 z-55 pointer-events-auto"
+        className="fixed inset-0 z-20 pointer-events-auto"
         style={{ display: "none" }}
       >
         {showTitleScreen && (
@@ -788,7 +808,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
           images={galleryImages}
           onClose={() => setShowGallery(false)}
           starfieldSpeedRef={starfieldSpeedRef}
-          controlsStarfield={showGallery}
+          controlsStarfield={galleryInteractive}
         />
       )}
 
@@ -808,7 +828,7 @@ export default function Experience({ galleryImages }: ExperienceProps) {
 
       <div
         ref={transitionOverlayRef}
-        className="fixed inset-0 z-200 bg-white pointer-events-none opacity-0 hidden"
+        className="fixed inset-0 z-95 bg-white pointer-events-none opacity-0 hidden"
       />
 
       {showSurprise && slideshowLetter && (

@@ -65,11 +65,11 @@ export default function StandardLetter({
         const tl = gsap.timeline();
         timelineRef.current = tl;
 
-        gsap.set(containerRef.current, { zIndex: 50, autoAlpha: 1 });
+        gsap.set(containerRef.current, { zIndex: 30, autoAlpha: 1 });
         tl.fromTo(
           containerRef.current,
           { opacity: 0 },
-          { opacity: 1, duration: 0.6, ease: "power2.inOut" },
+          { opacity: 1, duration: 0.5, ease: "power2.inOut" },
         );
 
         const flowItems = textRef.current.querySelectorAll("p, video");
@@ -81,19 +81,19 @@ export default function StandardLetter({
           {
             y: 0,
             opacity: 1,
-            stagger: 0.1,
-            duration: 0.8,
+            stagger: 0.08,
+            duration: 0.6,
             ease: "power3.out",
           },
-          "-=0.3",
+          "-=0.25",
         );
 
         if (image) {
           tl.fromTo(
             image,
             { x: 50, opacity: 0, rotate: 5 },
-            { x: 0, opacity: 1, rotate: 3, duration: 1, ease: "power3.out" },
-            "-=0.8",
+            { x: 0, opacity: 1, rotate: 3, duration: 0.7, ease: "power3.out" },
+            "-=0.45",
           );
         }
       } else if (!isOpen && containerRef.current && textRef.current) {
@@ -117,7 +117,7 @@ export default function StandardLetter({
           tl.to(image, {
             x: 20,
             opacity: 0,
-            duration: 0.5,
+            duration: 0.45,
             ease: "power2.in",
           });
         }
@@ -127,7 +127,7 @@ export default function StandardLetter({
           {
             y: -10,
             opacity: 0,
-            stagger: 0.05,
+            stagger: 0.04,
             duration: 0.4,
             ease: "power2.in",
           },
@@ -145,7 +145,7 @@ export default function StandardLetter({
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-[-1] opacity-0 flex items-center justify-center bg-black text-white overflow-hidden"
+      className="fixed inset-0 z-[-1] opacity-0 flex items-center justify-center bg-birthday-cream text-birthday-ink overflow-hidden"
     >
       <div className="absolute inset-0 cursor-pointer" onClick={onDismiss} />
       <div className="relative max-w-6xl w-full h-full p-6 md:p-20 flex flex-col pointer-events-none">
@@ -156,7 +156,7 @@ export default function StandardLetter({
           <div className="shrink-0 flex justify-end mb-4 md:mb-8">
             <button
               onClick={onDismiss}
-              className="text-xs uppercase tracking-[0.2em] opacity-40 hover:opacity-100 transition-opacity text-white"
+              className="text-xs uppercase tracking-[0.2em] text-birthday-ink/40 hover:text-birthday-ink transition-colors"
             >
               Close
             </button>
@@ -167,7 +167,7 @@ export default function StandardLetter({
           >
             <div
               ref={textRef}
-              className="block font-serif text-xl md:text-3xl leading-relaxed text-gray-200 select-text cursor-text w-full"
+              className="block font-sans text-xl md:text-3xl leading-relaxed text-birthday-ink select-text cursor-text w-full"
             >
               {letter.content.blocks.map((block, index) => {
                 switch (block.type) {
@@ -185,7 +185,7 @@ export default function StandardLetter({
                           width={256}
                           height={256}
                           alt={block.alt}
-                          className={`letter-image w-32 h-32 md:w-64 md:h-64 object-cover rounded-lg shadow-2xl transform rotate-3 contrast-125 border border-white/20 ${
+                          className={`letter-image w-32 h-32 md:w-64 md:h-64 object-cover rounded-lg shadow-xl transform rotate-3 border-2 border-birthday-gold ${
                             block.grayscale ? "grayscale" : ""
                           }`}
                         />
@@ -196,7 +196,7 @@ export default function StandardLetter({
                       <video
                         key={index}
                         src={block.src}
-                        className="letter-video w-full md:w-1/2 object-cover rounded-lg shadow-2xl border border-white/20 mt-4 mx-auto block"
+                        className="letter-video w-full md:w-1/2 object-cover rounded-lg shadow-xl border-2 border-birthday-gold mt-4 mx-auto block"
                         controls
                         onPlay={() =>
                           window.dispatchEvent(

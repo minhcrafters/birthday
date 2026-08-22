@@ -1,10 +1,5 @@
-// Central place to configure this experience for a new recipient.
-// Edit the values below, then personalize each letter in app/data/letters/.
-
 export interface BirthdayDate {
-  /** 1-12 */
   month: number;
-  /** day of month */
   day: number;
 }
 
@@ -25,9 +20,7 @@ export interface IntroTwist {
 export interface SiteConfig {
   recipientName: string;
   birthday: BirthdayDate;
-  /** Display label for the birthday's month, e.g. "August". */
   monthName: string;
-  /** Lines typed out one at a time during the opening sequence. */
   introTexts: string[];
   introTwist?: IntroTwist;
 }

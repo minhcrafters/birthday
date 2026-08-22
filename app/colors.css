@@ -10,4 +10,13 @@
     --color-ui-border: rgba(255, 255, 255, 0.1);
     --color-ui-border-hover: rgba(255, 255, 255, 0.3);
     --color-ui-glass: rgba(15, 23, 42, 0.6);
+
+    /* Birthday main-menu palette */
+    --color-birthday-coral: #fcc7c4;
+    --color-birthday-coral-deep: #ee8d86;
+    --color-birthday-mint: #abf0df;
+    --color-birthday-mint-deep: #3fab92;
+    --color-birthday-gold: #c19a3f;
+    --color-birthday-cream: #fff8ee;
+    --color-birthday-ink: #4a2e2a;
 }
